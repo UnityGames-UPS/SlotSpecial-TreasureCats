@@ -142,8 +142,8 @@ internal class FreeSpinPresenter : MonoBehaviour
            "it back to 0 afterwards, so the next win popup still fades in from nothing.")]
   [SerializeField] private CanvasGroup winPanelGroup;
 
-  [SerializeField] private GameObject congratsPopup;
-  [SerializeField] private RectTransform congratsPopupRect;
+  // [SerializeField] private GameObject congratsPopup;
+  // [SerializeField] private RectTransform congratsPopupRect;
 
   [Tooltip("Looping background animation behind the congratulations panel.")]
   [SerializeField] private ImageAnimation congratsBgAnim;
@@ -209,7 +209,7 @@ internal class FreeSpinPresenter : MonoBehaviour
     SetActive(bluePopup, false);
     SetActive(yellowPopup, false);
     SetActive(wildPopup, false);
-    SetActive(congratsPopup, false);
+    // SetActive(congratsPopup, false);
     SetActive(motorboatRoot, false);
 
     DetachWaves();
@@ -275,14 +275,15 @@ internal class FreeSpinPresenter : MonoBehaviour
       Debug.LogError("[FreeSpins] The wild popup has no CanvasGroup, so it cannot fade out — " +
                      "it would vanish in one frame instead.", this);
 
-    if (congratsPopup == null)
-      Debug.LogError("[FreeSpins] congratsPopup is unassigned; every round will end with no " +
-                     "total-win panel.", this);
-    else if (winPanelGroup == null && congratsPopup.GetComponentInParent<CanvasGroup>() != null)
-      Debug.LogError("[FreeSpins] winPanelGroup is unassigned but congratsPopup sits under a " +
-                     "CanvasGroup. WinPopupController holds WinPanel's group at alpha 0, so " +
-                     "the congratulations panel will activate INVISIBLY. Assign the " +
-                     "CanvasGroup on WinPanel.", this);
+    else if (winPanelGroup == null )//&& congratsPopup.GetComponentInParent<CanvasGroup>() != null
+      Debug.LogError("[FreeSpins] winPanelGroup is unassigned ", this);
+      //but congratsPopup sits under a " +
+                     //"CanvasGroup. WinPopupController holds WinPanel's group at alpha 0, so " +
+                     //"the congratulations panel will activate INVISIBLY. Assign the " +
+                    // "CanvasGroup on WinPanel.
+    // if (congratsPopup == null)
+    //   Debug.LogError("[FreeSpins] congratsPopup is unassigned; every round will end with no " +
+    //                  "total-win panel.", this);
   }
 
   private void OnDestroy()
@@ -669,7 +670,7 @@ internal class FreeSpinPresenter : MonoBehaviour
     // The jackpot panels leave together as the congratulations panel arrives.
     pigMeters?.HideJackpotPanels(instant: false);
 
-    yield return StartCoroutine(ShowCongratulations(round));
+    // yield return StartCoroutine(ShowCongratulations(round));
 
     // The background switches back part-way through the motorboat crossing, so the boat
     // arrives over the free-spin scene and leaves over the base game.
@@ -699,61 +700,61 @@ internal class FreeSpinPresenter : MonoBehaviour
     uiManager?.OnWinPopupClosed();
   }
 
-  private IEnumerator ShowCongratulations(FreeSpinRound round)
-  {
-    if (congratsPopup == null || congratsPopupRect == null)
-    {
-      Debug.LogError("[FreeSpins] The round finished but congratsPopup / congratsPopupRect is " +
-                     "not assigned, so no total-win panel can be shown. Assign " +
-                     "SlotObject/WinPanel/CongratulationsPopup in the Inspector.", this);
-      ApplyFinalMeters(round);
-      yield break;
-    }
+  // private IEnumerator ShowCongratulations(FreeSpinRound round)
+  // {
+  //   if (congratsPopup == null || congratsPopupRect == null)
+  //   {
+  //     Debug.LogError("[FreeSpins] The round finished but congratsPopup / congratsPopupRect is " +
+  //                    "not assigned, so no total-win panel can be shown. Assign " +
+  //                    "SlotObject/WinPanel/CongratulationsPopup in the Inspector.", this);
+  //     ApplyFinalMeters(round);
+  //     yield break;
+  //   }
 
-    SpriteNumberFormatter.Apply(congratsTotalWinText, round.accumulatedWin,
-                                maxDecimals: congratsMaxDecimals, grouping: false);
+  //   SpriteNumberFormatter.Apply(congratsTotalWinText, round.accumulatedWin,
+  //                               maxDecimals: congratsMaxDecimals, grouping: false);
 
-    // The shared WinPanel first. Its CanvasGroup is left at alpha 0 by WinPopupController, and
-    // the panel itself may be switched off in the scene — a child activated under either
-    // renders nothing at all, which looks exactly like the popup failing to open.
-    ShowWinPanel(true);
+  //   // The shared WinPanel first. Its CanvasGroup is left at alpha 0 by WinPopupController, and
+  //   // the panel itself may be switched off in the scene — a child activated under either
+  //   // renders nothing at all, which looks exactly like the popup failing to open.
+  //   ShowWinPanel(true);
 
-    // Started before the scale-up so the panel arrives mid-animation.
-    CoinAnimator.PlayLoop(congratsBgAnim, congratsBgAnimSpeed);
-    congratsFountain?.Play();
+  //   // Started before the scale-up so the panel arrives mid-animation.
+  //   CoinAnimator.PlayLoop(congratsBgAnim, congratsBgAnimSpeed);
+  //   congratsFountain?.Play();
 
-    SetActive(congratsPopup, true);
-    AudioManager.Instance?.PlayCongratulations();
+  //   SetActive(congratsPopup, true);
+  //   AudioManager.Instance?.PlayCongratulations();
 
-    // The triggering pigs' meters drop back to their defaults as the panel opens.
-    ApplyFinalMeters(round);
+  //   // The triggering pigs' meters drop back to their defaults as the panel opens.
+  //   ApplyFinalMeters(round);
 
-    if (!congratsPopup.activeInHierarchy)
-    {
-      Transform dead = FirstInactiveAncestor(congratsPopup.transform);
-      Debug.LogError($"[FreeSpins] CongratulationsPopup is not visible because " +
-                     $"'{(dead != null ? dead.name : "an ancestor")}' is inactive in the " +
-                     "scene. Enable it, or move the popup under a live parent.", this);
-    }
+  //   if (!congratsPopup.activeInHierarchy)
+  //   {
+  //     Transform dead = FirstInactiveAncestor(congratsPopup.transform);
+  //     Debug.LogError($"[FreeSpins] CongratulationsPopup is not visible because " +
+  //                    $"'{(dead != null ? dead.name : "an ancestor")}' is inactive in the " +
+  //                    "scene. Enable it, or move the popup under a live parent.", this);
+  //   }
 
-    congratsPopupRect.localScale = Vector3.zero;
+  //   congratsPopupRect.localScale = Vector3.zero;
 
-    yield return congratsPopupRect.DOScale(1f, popupScaleUpDuration).SetEase(popupScaleUpEase)
-                                  .WaitForCompletion();
+  //   yield return congratsPopupRect.DOScale(1f, popupScaleUpDuration).SetEase(popupScaleUpEase)
+  //                                 .WaitForCompletion();
 
-    yield return new WaitForSeconds(congratsHoldDuration);
+  //   yield return new WaitForSeconds(congratsHoldDuration);
 
-    // Stopped before the panel closes so the shower's own fade overlaps it, rather than the
-    // coins cutting out the instant the thing they decorate has gone.
-    if (congratsFountain != null && congratsFountain.IsPlaying) congratsFountain.Stop();
+  //   // Stopped before the panel closes so the shower's own fade overlaps it, rather than the
+  //   // coins cutting out the instant the thing they decorate has gone.
+  //   if (congratsFountain != null && congratsFountain.IsPlaying) congratsFountain.Stop();
 
-    yield return congratsPopupRect.DOScale(0f, popupScaleDownDuration).SetEase(popupScaleDownEase)
-                                  .WaitForCompletion();
+  //   yield return congratsPopupRect.DOScale(0f, popupScaleDownDuration).SetEase(popupScaleDownEase)
+  //                                 .WaitForCompletion();
 
-    CoinAnimator.Stop(congratsBgAnim);
-    SetActive(congratsPopup, false);
-    ShowWinPanel(false);
-  }
+  //   CoinAnimator.Stop(congratsBgAnim);
+  //   SetActive(congratsPopup, false);
+  //   ShowWinPanel(false);
+  // }
 
   /// <summary>
   /// Render the last free spin's meters — the server's post-round reset of whichever pigs
@@ -847,7 +848,7 @@ internal class FreeSpinPresenter : MonoBehaviour
     CoinAnimator.Stop(congratsBgAnim);
     CoinAnimator.Stop(motorboatAnim);
 
-    SetActive(congratsPopup, false);
+    // SetActive(congratsPopup, false);
     ShowWinPanel(false);
     SetActive(motorboatRoot, false);
     SetDismissButtons(false);
@@ -879,7 +880,7 @@ internal class FreeSpinPresenter : MonoBehaviour
     bluePopupRect?.DOKill();
     yellowPopupRect?.DOKill();
     wildPopupRect?.DOKill();
-    congratsPopupRect?.DOKill();
+    // congratsPopupRect?.DOKill();
 
     wildPopupGroup?.DOKill();
     if (wildBgGlow != null) wildBgGlow.DOKill();

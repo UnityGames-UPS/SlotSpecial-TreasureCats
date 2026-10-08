@@ -193,6 +193,7 @@ public class ServerPlayerBalance
 [Serializable]
 public class ServerPayload
 {
+  public List<List<int>> matrix;
   public double winAmount;
 
   /// <summary>One entry per winning payline. Empty on a losing spin.</summary>
@@ -308,7 +309,7 @@ public class ServerLineWin
   /// [ "0,0", "0,1", "0,2" ]. NOTE the row-first order — the client's resultMatrix is
   /// the other way round (column-major).
   /// </summary>
-  public List<string> positions;
+  public object positions;
 }
 
 [Serializable]
@@ -348,6 +349,7 @@ public class SpinPayload
 [Serializable]
 public class GameConfig
 {
+  public Root rootData;
   public int reelCount = 5;
   public int rowCount = 3;
   public int symbolCount = RichPiggiesSymbols.TotalSymbolCount;
@@ -629,7 +631,55 @@ public static class InitDataConverter
 
     return config;
   }
+  internal static GameConfig ConvertToGameConfig(Root root)
+  {
+      var config = new GameConfig
+      {
+          reelCount = (root.gameData?.lines != null && root.gameData.lines.Count > 0) ? root.gameData.lines[0].Count : 5,
+          rowCount = 3,
+          paylineCount = (root.gameData?.lines != null && root.gameData.lines.Count > 0) 
+              ? root.gameData.lines.Count 
+              : (root.gameData != null && root.gameData.totalLines > 0 ? root.gameData.totalLines : 20),
+          paylines = root.gameData?.lines,
+          availableBets = root.gameData?.bets,
+          creditDivisor = (root.gameData?.lines != null && root.gameData.lines.Count > 0) 
+              ? root.gameData.lines.Count 
+              : (root.gameData != null && root.gameData.totalLines > 0 ? root.gameData.totalLines : 20),
+          symbols = new List<SymbolInfo>(),
+          rootData = root
+      };
 
+      if (root.uiData?.paylines?.symbols != null)
+      {
+          foreach (var sym in root.uiData.paylines.symbols)
+          {
+              config.symbols.Add(new SymbolInfo
+              {
+                  id = sym.id,
+                  name = sym.name,
+                  description = sym.description,
+                  isWild = sym.name != null && sym.name.ToLower().Contains("wild")
+              });
+          }
+      }
+
+      if (root.features?.wildSubstitution?.wildSymbolIds?.Count > 0)
+          config.wildSymbolId = root.features.wildSubstitution.wildSymbolIds[0];
+
+      if (root.features?.scatter != null)
+          config.scatterSymbolId = root.features.scatter.scatterSymbolId;
+
+      return config;
+  }
+
+  internal static PlayerData ConvertToPlayerData(Player player)
+  {
+      return new PlayerData
+      {
+          balance = player != null ? player.balance : 0,
+          currentBetIndex = 0
+      };
+  }
   /// <summary>Columns: the width of a payline, else 5.</summary>
   private static int DeriveReelCount(ServerGameData gameData)
   {
@@ -685,7 +735,7 @@ public static class InitDataConverter
 
     var result = new SpinResult
     {
-      resultMatrix = ConvertReelsToMatrix(serverResponse.matrix, gameConfig),
+      resultMatrix = ConvertReelsToMatrix(serverResponse.payload?.matrix, serverResponse.matrix, gameConfig),
       winAmount = winAmountVal,
       grandTotalWin = winAmountVal,
       winLines = ConvertLineWins(payload?.lineWins, gameConfig),
@@ -736,51 +786,50 @@ public static class InitDataConverter
   ///
   /// Order is preserved, so positions[0] is always the leftmost reel of the run.
   /// </summary>
-  private static List<WinLine> ConvertLineWins(List<ServerLineWin> serverLineWins, GameConfig gameConfig)
+  private static List<WinLine> ConvertLineWins(List<ServerLineWin> serverLineWins,GameConfig gameConfig)
   {
-    var winLines = new List<WinLine>();
-    if (serverLineWins == null) return winLines;
+      var winLines = new List<WinLine>();
 
-    int reelCount = (gameConfig != null && gameConfig.reelCount > 0) ? gameConfig.reelCount : 5;
-    int rowCount = (gameConfig != null && gameConfig.rowCount > 0) ? gameConfig.rowCount : 3;
+      if (serverLineWins == null)
+          return winLines;
 
-    foreach (var serverWin in serverLineWins)
-    {
-      if (serverWin == null) continue;
+      int reelCount = gameConfig != null && gameConfig.reelCount > 0 ? gameConfig.reelCount : 5;
+      int rowCount = gameConfig != null && gameConfig.rowCount > 0 ? gameConfig.rowCount : 3;
 
-      var positions = new List<int>();
-
-      if (serverWin.positions != null)
+      foreach (var serverWin in serverLineWins)
       {
-        foreach (string cell in serverWin.positions)
-        {
-          if (!TryParseCell(cell, reelCount, rowCount, out int flatIndex))
+          if (serverWin == null)
+              continue;
+
+          var positions = new List<int>();
+
+          if (serverWin.positions is System.Collections.IEnumerable rawPositions)
           {
-            UnityEngine.Debug.LogError(
-                $"[InitDataConverter] Line {serverWin.lineIndex} has an unusable position '{cell}' — skipped.");
-            continue;
+              foreach (var item in rawPositions)
+              {
+                  string cell = item.ToString();
+
+                    if (item is Newtonsoft.Json.Linq.JArray arr && arr.Count >= 2)
+                        cell = $"{arr[0]},{arr[1]}";
+
+                  if (TryParseCell(cell, reelCount, rowCount, out int flatIndex))
+                      positions.Add(flatIndex);
+              }
           }
-          positions.Add(flatIndex);
-        }
+
+          if (positions.Count == 0)
+              continue;
+
+          winLines.Add(new WinLine
+          {
+              lineId = serverWin.lineIndex,
+              symbolId = serverWin.symbolId,
+              positions = positions,
+              winAmount = serverWin.winAmount
+          });
       }
 
-      if (positions.Count == 0)
-      {
-        UnityEngine.Debug.LogError($"[InitDataConverter] Line {serverWin.lineIndex} produced no usable positions — dropped.");
-        continue;
-      }
-
-      winLines.Add(new WinLine
-      {
-        // A real index into GameConfig.paylines, unlike the CNY synthetic counter.
-        lineId = serverWin.lineIndex,
-        symbolId = serverWin.symbolId,
-        positions = positions,
-        winAmount = serverWin.winAmount
-      });
-    }
-
-    return winLines;
+      return winLines;
   }
 
   /// <summary>Parse a "row,col" cell into a row-major flat index. False on anything malformed.</summary>
@@ -805,6 +854,7 @@ public static class InitDataConverter
   /// Transpose the server's ROW-major matrix (3 rows x 5 cols) into the client's
   /// COLUMN-major resultMatrix[col][row], which is what SlotView indexes by reel.
   /// </summary>
+  
   private static List<List<int>> ConvertReelsToMatrix(List<List<string>> serverMatrix, GameConfig gameConfig)
   {
     var sourceReels = serverMatrix;
@@ -848,7 +898,48 @@ public static class InitDataConverter
 
     return matrix;
   }
+  private static List<List<int>> ConvertReelsToMatrix(List<List<int>> payloadMatrix, List<List<string>> rootMatrix, GameConfig gameConfig)
+  {
+    int rowCount = gameConfig != null ? gameConfig.rowCount : 3;
+    if (payloadMatrix != null && payloadMatrix.Count > 0)
+    {
+      int totalRows = payloadMatrix.Count;
+      int totalCols = payloadMatrix[0].Count;
+      var matrix = new List<List<int>>();
 
+      for (int col = 0; col < totalCols; col++)
+      {
+        var column = new List<int>();
+        for (int row = 0; row < totalRows; row++)
+        {
+          column.Add(payloadMatrix[row][col]);
+        }
+        matrix.Add(column);
+      }
+      return matrix;
+    }
+    if (rootMatrix != null && rootMatrix.Count > 0)
+    {
+      int totalRows = rootMatrix.Count;
+      int totalCols = rootMatrix[0].Count;
+      var matrix = new List<List<int>>();
+
+      for (int col = 0; col < totalCols; col++)
+      {
+        var column = new List<int>();
+        for (int row = 0; row < totalRows; row++)
+        {
+          int.TryParse(rootMatrix[row][col], out int id);
+          column.Add(id);
+        }
+        matrix.Add(column);
+      }
+      return matrix;
+    }
+
+    UnityEngine.Debug.LogError("Invalid server reels/matrix sourceReels is null or empty");
+    return GenerateDefaultMatrix(rowCount);
+  }
   private static List<List<int>> GenerateDefaultMatrix(int rowCount)
   {
     var matrix = new List<List<int>>();

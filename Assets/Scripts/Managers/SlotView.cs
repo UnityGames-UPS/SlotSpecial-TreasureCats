@@ -482,9 +482,13 @@ public class SlotView : MonoBehaviour
   /// <summary>A random id that is allowed to appear as blur filler during the spin.</summary>
   private int RandomFillerSymbolId()
   {
-    int[] pool = RichPiggiesSymbols.SpinFillerSymbolIds;
+      if (gameManager?.gameConfig?.symbols != null && gameManager.gameConfig.symbols.Count > 0)
+      {
+          int idx = Random.Range(0, gameManager.gameConfig.symbols.Count);
+          return gameManager.gameConfig.symbols[idx].id;
+      }
 
-    return pool[Random.Range(0, pool.Length)];
+      return Random.Range(0, symbolSprites != null ? symbolSprites.Length : 12);
   }
 
   private SlotSymbolView ResultCell(int col, int row)

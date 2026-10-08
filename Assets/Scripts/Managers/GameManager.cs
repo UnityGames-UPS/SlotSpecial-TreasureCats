@@ -81,7 +81,7 @@ public class GameManager : MonoBehaviour
 
     // Seed the pig / jackpot meters from the init payload's live state. Done after
     // UpdateBetAmount, because the six jackpot payouts are multiplier x current bet.
-    if (pigMeters != null) pigMeters.SeedFromInit(gameConfig.features);
+    if (pigMeters != null && gameConfig.features != null) pigMeters.SeedFromInit(gameConfig.features);
 
     isInitialized = true;
     currentState = GameState.Idle;

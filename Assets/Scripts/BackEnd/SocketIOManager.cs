@@ -268,9 +268,10 @@ public class SocketIOManager : MonoBehaviour
 
         try
         {
-            var initData = JsonConvert.DeserializeObject<InitData>(jsonData);
-            var gameConfig = InitDataConverter.ConvertToGameConfig(initData);
-            var playerData = InitDataConverter.ConvertToPlayerData(initData.player);
+
+            var rootData = JsonConvert.DeserializeObject<Root>(jsonData);
+            var gameConfig = InitDataConverter.ConvertToGameConfig(rootData);
+            var playerData = InitDataConverter.ConvertToPlayerData(rootData.player);
             var initialMatrix = GenerateRandomMatrix(gameConfig.rowCount);
 
             isInitialized = true;

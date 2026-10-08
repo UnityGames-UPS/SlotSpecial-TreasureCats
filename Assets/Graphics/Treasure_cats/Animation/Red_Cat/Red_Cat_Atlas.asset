@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6b194f808b1af6499c93410e504af42, type: 3}
+  m_Name: Red_Cat_Atlas
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.SpineAtlasAsset
+  textureLoadingMode: 0
+  onDemandTextureLoader: {fileID: 0}
+  atlasFile: {fileID: 4900000, guid: c130123011adff34398341a527781536, type: 3}
+  materials:
+  - {fileID: 2100000, guid: 4ef97436320f4084190bfd60716fdcb9, type: 2}
+  - {fileID: 2100000, guid: afca9fd010dffd640860753566a503da, type: 2}
+  - {fileID: 2100000, guid: 295c3e92185f2214fa2d4e0d5a78c621, type: 2}
+  - {fileID: 2100000, guid: bd4dc90b47f4c584dbc47d018e6eef31, type: 2}

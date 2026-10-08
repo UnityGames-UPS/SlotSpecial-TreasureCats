@@ -316,6 +316,9 @@ internal class WinPopupController : MonoBehaviour
   internal bool ShouldShow(double winAmount, double totalPay)
   {
     if (winAmount <= 0) return false;
+    double multiplier = totalPay > 0 ? winAmount / totalPay : 0;
+    // Ignore wins below the first tier.
+    if (winTiers != null && winTiers.Count > 0 && multiplier < winTiers[0].minMultiplier) return false;
 
     if (SelectTier(winAmount, totalPay) != null) return true;
 
@@ -324,7 +327,7 @@ internal class WinPopupController : MonoBehaviour
     if (!warnedNoTierMatched)
     {
       warnedNoTierMatched = true;
-      double multiplier = totalPay > 0 ? winAmount / totalPay : 0;
+      // double multiplier = totalPay > 0 ? winAmount / totalPay : 0;
 
       if (winTiers == null || winTiers.Count == 0)
         Debug.LogError("[WinPopupController] A win of " + winAmount + " matched no tier " +
