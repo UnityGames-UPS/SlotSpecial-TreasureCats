@@ -310,6 +310,7 @@ public class ServerLineWin
   /// the other way round (column-major).
   /// </summary>
   public object positions;
+  public object matchedPositions;
 }
 
 [Serializable]
@@ -803,14 +804,18 @@ public static class InitDataConverter
 
           var positions = new List<int>();
 
-          if (serverWin.positions is System.Collections.IEnumerable rawPositions)
+          var rawPositions = serverWin.matchedPositions ?? serverWin.positions;
+
+          if (rawPositions is System.Collections.IEnumerable enumerable)
           {
-              foreach (var item in rawPositions)
+              foreach (var item in enumerable)
               {
                   string cell = item.ToString();
 
-                    if (item is Newtonsoft.Json.Linq.JArray arr && arr.Count >= 2)
-                        cell = $"{arr[0]},{arr[1]}";
+                  if (item is Newtonsoft.Json.Linq.JObject obj && obj["row"] != null && obj["col"] != null)
+                      cell = $"{obj["row"]},{obj["col"]}";
+                  else if (item is Newtonsoft.Json.Linq.JArray arr && arr.Count >= 2)
+                      cell = $"{arr[0]},{arr[1]}";
 
                   if (TryParseCell(cell, reelCount, rowCount, out int flatIndex))
                       positions.Add(flatIndex);
