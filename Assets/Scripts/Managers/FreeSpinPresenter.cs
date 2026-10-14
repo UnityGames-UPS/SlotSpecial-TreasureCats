@@ -163,13 +163,20 @@ internal class FreeSpinPresenter : MonoBehaviour
   [Header("Motorboat outro")]
   [Tooltip("The piggy-on-a-motorboat animation that crosses the screen once the " +
            "congratulations panel has closed. Drawn above all other UI.")]
-  [SerializeField] private ImageAnimation motorboatAnim;
-  [SerializeField] private GameObject motorboatRoot;
-  [SerializeField] private float motorboatAnimationSpeed = 5f;
-  [Tooltip("How far through the motorboat animation (0-1) the background switches back to " +
+  // [SerializeField] private ImageAnimation motorboatAnim;
+  [SerializeField] private GameObject catCarRoot;
+  [SerializeField] private float catCarDuration = 2.5f;
+  // [SerializeField] private float motorboatAnimationSpeed = 5f;
+  [Tooltip("How far through the cat car animation (0-1) the background switches back to " +
            "the base game.")]
   [Range(0f, 1f)]
-  [SerializeField] private float motorboatBackgroundSwitchAt = 0.4f;
+  [SerializeField] private float catCarBackgroundSwitchAt = 0.4f;
+  [SerializeField] private CanvasGroup catCarTransitionBlackScreen;
+  [Header("Free Spin Transition Animation")]
+  [SerializeField] private Spine.Unity.SkeletonGraphic transitionSpine;
+  [SerializeField] private string transitionAnimName = "animation";
+  [SerializeField] private CanvasGroup catTransitionBlackScreen;
+  [SerializeField] private float blackScreenFadeOutDuration = 0.5f;
 
   #endregion
 
@@ -210,7 +217,7 @@ internal class FreeSpinPresenter : MonoBehaviour
     SetActive(yellowPopup, false);
     SetActive(wildPopup, false);
     // SetActive(congratsPopup, false);
-    SetActive(motorboatRoot, false);
+    SetActive(catCarRoot, false);
 
     DetachWaves();
 
@@ -334,13 +341,13 @@ internal class FreeSpinPresenter : MonoBehaviour
     slotView?.SettleSymbolsForFeature();
 
     yield return StartCoroutine(ShowTriggeredPopup(round));
-
+    yield return StartCoroutine(PlayTransitionAnimation());// play the cat animation
     // The badges belong to the trigger popup; the glow keeps running for the whole round.
     pigMeters?.StopWinnerLoop();
 
     if (uiManager != null)
     {
-      yield return StartCoroutine(uiManager.SwitchBackground(freeSpin: true));
+      // yield return StartCoroutine(uiManager.SwitchBackground(freeSpin: true));
       uiManager.ShowFreeSpinDisplay(round.totalSpins);
     }
 
@@ -674,18 +681,23 @@ internal class FreeSpinPresenter : MonoBehaviour
 
     // The background switches back part-way through the motorboat crossing, so the boat
     // arrives over the free-spin scene and leaves over the base game.
-    Coroutine motorboat = StartCoroutine(PlayMotorboat());
+    // Coroutine motorboat = StartCoroutine(PlayMotorboat());
 
     // Read after PlayMotorboat has started: PlayOnce sets the speed the duration depends on.
-    float switchDelay = motorboatAnim != null
-        ? motorboatAnim.GetSequenceDuration() * motorboatBackgroundSwitchAt
-        : 0f;
+    // float switchDelay = motorboatAnim != null
+    //     ? motorboatAnim.GetSequenceDuration() * motorboatBackgroundSwitchAt
+    //     : 0f;
+    // if (switchDelay > 0f) yield return new WaitForSeconds(switchDelay);
+
+    Coroutine motorboat = StartCoroutine(PlayCatCar());
+    float switchDelay = catCarDuration * catCarBackgroundSwitchAt;
     if (switchDelay > 0f) yield return new WaitForSeconds(switchDelay);
 
     Coroutine backgroundSwitch = uiManager != null
         ? StartCoroutine(uiManager.SwitchBackground(freeSpin: false))
         : null;
 
+    // yield return motorboat;
     yield return motorboat;
 
     if (backgroundSwitch != null) yield return backgroundSwitch;
@@ -798,27 +810,105 @@ internal class FreeSpinPresenter : MonoBehaviour
     return null;
   }
 
-  private IEnumerator PlayMotorboat()
+  // private IEnumerator PlayMotorboat()
+  // {
+  //   if (motorboatAnim == null)
+  //   {
+  //     SetActive(motorboatRoot, false);
+  //     yield break;
+  //   }
+
+  //   SetActive(motorboatRoot, true);
+
+  //   bool finished = false;
+  //   CoinAnimator.PlayOnce(motorboatAnim, motorboatAnimationSpeed, () => finished = true);
+
+  //   // Backed by the sequence's own computed length. ImageAnimation raises onLoopComplete from
+  //   // an Invoke chain that a disabled object silently drops, and the round must not be able
+  //   // to hang on a decoration.
+  //   float deadline = Time.time + motorboatAnim.GetSequenceDuration() + 1f;
+  //   while (!finished && Time.time < deadline) yield return null;
+
+  //   CoinAnimator.Stop(motorboatAnim);
+  //   SetActive(motorboatRoot, false);
+  // }
+
+  private IEnumerator PlayCatCar()
   {
-    if (motorboatAnim == null)
+    if (catCarRoot == null) yield break;
+
+    if (catCarTransitionBlackScreen != null)
     {
-      SetActive(motorboatRoot, false);
-      yield break;
+      catCarTransitionBlackScreen.gameObject.SetActive(true);
+      catCarTransitionBlackScreen.alpha = 1f;
+      catCarTransitionBlackScreen.blocksRaycasts = true;
     }
 
-    SetActive(motorboatRoot, true);
+    SetActive(catCarRoot, true);
 
-    bool finished = false;
-    CoinAnimator.PlayOnce(motorboatAnim, motorboatAnimationSpeed, () => finished = true);
+    float duration = catCarDuration;
+    var skeleton = catCarRoot.GetComponentInChildren<Spine.Unity.SkeletonGraphic>();
+    if (skeleton != null && skeleton.AnimationState != null)
+    {
+      var track = skeleton.AnimationState.GetCurrent(0);
+      if (track != null && track.Animation != null && track.Animation.Duration > 0f)
+      {
+        duration = track.Animation.Duration;
+      }
+    }
 
-    // Backed by the sequence's own computed length. ImageAnimation raises onLoopComplete from
-    // an Invoke chain that a disabled object silently drops, and the round must not be able
-    // to hang on a decoration.
-    float deadline = Time.time + motorboatAnim.GetSequenceDuration() + 1f;
-    while (!finished && Time.time < deadline) yield return null;
+    yield return new WaitForSeconds(duration);
 
-    CoinAnimator.Stop(motorboatAnim);
-    SetActive(motorboatRoot, false);
+    SetActive(catCarRoot, false);
+
+    if (catCarTransitionBlackScreen != null)
+    {
+      yield return catCarTransitionBlackScreen
+          .DOFade(0f, blackScreenFadeOutDuration)
+          .WaitForCompletion();
+
+      catCarTransitionBlackScreen.gameObject.SetActive(false);
+    }
+  }
+
+  private IEnumerator PlayTransitionAnimation()
+  {
+      if (transitionSpine == null) yield break;
+
+      // 1. Show the solid black screen
+      if (catTransitionBlackScreen != null)
+      {
+          catTransitionBlackScreen.gameObject.SetActive(true);
+          catTransitionBlackScreen.alpha = 1f;
+          catTransitionBlackScreen.blocksRaycasts = true;
+      }
+
+      // 2. Play Spine animation
+      transitionSpine.gameObject.SetActive(true);
+      var track = transitionSpine.AnimationState.SetAnimation(0, transitionAnimName, loop: false);
+
+      float spineDuration = track != null ? track.Animation.Duration : 1.5f;
+      yield return new WaitForSeconds(spineDuration);
+
+      // 3. Hide the Spine animation
+      transitionSpine.gameObject.SetActive(false);
+
+      // 4. (Optional & Recommended) Swap background & top counter while still black
+      if (uiManager != null)
+      {
+          yield return StartCoroutine(uiManager.SwitchBackground(freeSpin: true));
+          // uiManager.ShowFreeSpinDisplay(round.totalSpins);
+      }
+
+      // 5. Fade out the black screen smoothly
+      if (catTransitionBlackScreen != null)
+      {
+          yield return catTransitionBlackScreen
+              .DOFade(0f, blackScreenFadeOutDuration)
+              .WaitForCompletion();
+
+          catTransitionBlackScreen.gameObject.SetActive(false);
+      }
   }
 
   #endregion
@@ -846,11 +936,11 @@ internal class FreeSpinPresenter : MonoBehaviour
 
     congratsFountain?.StopImmediate();
     CoinAnimator.Stop(congratsBgAnim);
-    CoinAnimator.Stop(motorboatAnim);
+    // CoinAnimator.Stop(motorboatAnim);
 
     // SetActive(congratsPopup, false);
     ShowWinPanel(false);
-    SetActive(motorboatRoot, false);
+    SetActive(catCarRoot, false);
     SetDismissButtons(false);
 
     // KillWinTweens released the WIN hold on the darkening panel before calling us, but the

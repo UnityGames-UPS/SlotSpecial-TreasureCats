@@ -255,7 +255,10 @@ public class SlotView : MonoBehaviour
       (resultCells != null && resultCells.Count > 0 && resultCells[0] != null && resultCells[0].cells != null && resultCells[0].cells.Count > 0)
           ? resultCells[0].cells.Count
           : (gameManager != null && gameManager.gameConfig != null ? gameManager.gameConfig.rowCount : 3);
-
+  
+  [Header("Win Line Presentation")]
+  [SerializeField] private PayoutCalculation payCalculator;
+  
   #region Initialization
 
   private void Awake()
@@ -469,12 +472,13 @@ public class SlotView : MonoBehaviour
   private void ApplySymbol(SlotSymbolView cell, int symbolId)
   {
     if (cell == null) return;
-
+    
+    Sprite sprite = GetSymbolSprite(symbolId);// Always retrieve the resting sprite so IconImage can display it
     Spine.Unity.SkeletonDataAsset skeleton = GetSymbolSkeleton(symbolId);
 
     // Only look up a sprite when there is no skeleton — GetSymbolSprite logs an error for
     // an unassigned id, and ids 0/1/2 are legitimately sprite-less.
-    Sprite sprite = skeleton != null ? null : GetSymbolSprite(symbolId);
+    // Sprite sprite = skeleton != null ? null : GetSymbolSprite(symbolId);
 
     cell.SetSymbol(symbolId, sprite, skeleton);
   }
@@ -1429,27 +1433,36 @@ public class SlotView : MonoBehaviour
     onComplete?.Invoke();
   }
 
-  private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action onComplete)
-  {
-    // Let the landed grid be read before anything lights up. The reels have only just
-    // settled at this point, so going straight into the darkening panel gives the player
-    // no beat to see what they actually landed.
+
+private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action onComplete)
+{
     if (winPresentationDelay > 0f)
       yield return new WaitForSeconds(winPresentationDelay);
 
-    // ---- STAGE 1: everything at once -------------------------------------------------
+    
+    // // ---- STAGE 1: Shows ALL lines at the start ----
+    // DrawAllWinLines(winLines); // <--- Draws all lines together
+    // var allWinPositions = new HashSet<int>();
+    // foreach (var winLine in winLines)
+    // {
+    //     if (winLine.positions == null) continue;
+    //     foreach (int flatIndex in winLine.positions) allWinPositions.Add(flatIndex);
+    // }
+
+    // // ... dark overlay & symbol animation ...
+    // yield return StartCoroutine(ShowAndPlayWin(allWinPositions));
+    // yield return new WaitForSeconds(phaseGapDelay);
+
+    // // ... win popup handling ...
+    // onComplete?.Invoke();
+
+    // 1. Collect all winning positions for the idle Spine animation loop
     var allWinPositions = new HashSet<int>();
     foreach (var winLine in winLines)
     {
       if (winLine.positions == null) continue;
       foreach (int flatIndex in winLine.positions) allWinPositions.Add(flatIndex);
     }
-
-    // The round total, for the win popup below.
-    // The server's payload.winAmount is already the whole spin — lines plus any jackpot — and
-    // is what lands in the win field, so the popup shows exactly that.
-    double totalWinAmount = gameManager != null && gameManager.lastResult != null
-        ? gameManager.lastResult.winAmount : 0;
 
     // Raise the darkening panel once, for the whole presentation. See winOverlayHeld.
     if (winAnimationLayer != null)
@@ -1458,69 +1471,68 @@ public class SlotView : MonoBehaviour
       SetWinOverlayActive(true);
     }
 
-    yield return StartCoroutine(ShowAndPlayWin(allWinPositions));
-    yield return new WaitForSeconds(phaseGapDelay);
-
     // ---- WIN POPUP: fades in over stage 1 repeating underneath --------------------------
+    double totalWinAmount = gameManager != null && gameManager.lastResult != null ? gameManager.lastResult.winAmount : 0;
     double totalPay = gameManager != null ? gameManager.GetTotalPay() : 0;
-    bool showPopup = false;
+    bool showPopup = winPopup != null && winPopup.ShouldShow(totalWinAmount, totalPay);
     bool popupDone = false;
 
-    if (winPopup != null)
-    {
-      showPopup = winPopup.ShouldShow(totalWinAmount, totalPay);
-    }
-    else if (totalWinAmount > 0 && !warnedNoWinPopup)
-    {
-      // Once per session, not per spin. A null here is the single most likely reason a win
-      // shows its symbol animation but never its popup, and it is invisible otherwise.
-      warnedNoWinPopup = true;
-      Debug.LogError("[SlotView] This round won but no win popup played: the 'Win Popup' " +
-                     "field on SlotView is unassigned. Assign the WinPopupController object " +
-                     "to it in the Inspector.", this);
-    }
-
-    // Must be started BEFORE onComplete. Show() raises isSpecialWinActive synchronously, and
-    // onComplete runs GameManager.ProcessSpecialFeaturesAfterWin, which checks that flag on
-    // its very first statement — start the popup after it and the round resolves underneath.
     if (showPopup)
-      winPopup.Show(totalWinAmount, totalPay, () => popupDone = true);
-
-    // The game loop advances here — everything below is idle presentation.
-    onComplete?.Invoke();
-
-    // The popup arrives as the symbols begin this second pass, and they keep cycling for as
-    // long as it is up. popupDone is only tested between passes so a pass always completes
-    // in sync. A pass is short and the fade-out overlaps it.
-    while (showPopup && !popupDone)
     {
-      yield return StartCoroutine(ShowAndPlayWin(allWinPositions));
-      yield return new WaitForSeconds(phaseGapDelay);
+      // Popup shows over darkened grid WITHOUT showing all lines
+      winPopup.Show(totalWinAmount, totalPay, () => popupDone = true);
+      while (!popupDone)
+        yield return null;
     }
+
+    onComplete?.Invoke();
 
     // Autoplay and free spins never see the per-line breakdown; the next spin follows.
     if (gameManager != null && (gameManager.isAutoPlaying || gameManager.isInFreeSpins))
     {
       LowerAllWinCells();
       ReleaseWinOverlay();
+      winAnimationCoroutine = null;
       yield break;
     }
 
+    
     // ---- STAGE 2: line by line, a fixed number of passes ------------------------------
-    for (int pass = 0; pass < phase2Repeats; pass++)
-    {
-      foreach (var winLine in winLines)
-      {
-        if (winLine.positions == null || winLine.positions.Count == 0) continue;
+    // for (int pass = 0; pass < phase2Repeats; pass++)
+    // {
+    //   foreach (var winLine in winLines)
+    //   {
+    //     if (winLine.positions == null || winLine.positions.Count == 0) continue;
+    //     DrawSingleWinLine(winLine);
+    //     ShowLinePayoutText(winLine);
 
+    //     yield return StartCoroutine(ShowAndPlayWin(winLine.positions));
+    //     yield return new WaitForSeconds(phase2LineDelay);
+    //   }
+    // }
+    
+    foreach (var winLine in winLines)
+    {
+        if (winLine.positions == null || winLine.positions.Count == 0) continue;
+        DrawSingleWinLine(winLine);
         ShowLinePayoutText(winLine);
 
         yield return StartCoroutine(ShowAndPlayWin(winLine.positions));
         yield return new WaitForSeconds(phase2LineDelay);
-      }
     }
 
+    
+    // // ---- STAGE 3: Shows ALL lines at the end in an infinite loop ----
+    // DrawAllWinLines(winLines);
+    // while (true)
+    // {
+    //     yield return StartCoroutine(ShowAndPlayWin(allWinPositions));
+    //     yield return new WaitForSeconds(phaseGapDelay);
+    // }
+
+    // ---- STOP & DESTROY WIN LINE OBJECTS ----
     HideAllWinLineTexts();
+    payCalculator?.ResetLines();
     yield return new WaitForSeconds(phaseGapDelay);
 
     // ---- STAGE 3: idle loop, all winners together, until the next spin ----------------
@@ -1529,7 +1541,7 @@ public class SlotView : MonoBehaviour
       yield return StartCoroutine(ShowAndPlayWin(allWinPositions));
       yield return new WaitForSeconds(phaseGapDelay);
     }
-  }
+}
 
   /// <summary>
   /// Put a line's payout on its <see cref="winTextColumnIndex"/> cell — the 3rd reel by
@@ -1901,6 +1913,7 @@ public class SlotView : MonoBehaviour
   /// </param>
   private void KillWinTweens(bool stopCoroutine = true, bool interruptedBySpin = true)
   {
+    payCalculator?.ResetLines();
     foreach (var tween in winTweens) tween?.Kill();
     winTweens.Clear();
 
@@ -1954,6 +1967,32 @@ public class SlotView : MonoBehaviour
   {
     KillAllTweens();
     KillWinTweens();
+  }
+  private void DrawAllWinLines(List<WinLine> winLines)
+  {
+      if (payCalculator == null || gameManager?.gameConfig?.paylines == null) return;
+      payCalculator.ResetLines();
+
+      foreach (var winLine in winLines)
+      {
+          if (winLine.lineId >= 0 && winLine.lineId < gameManager.gameConfig.paylines.Count)
+          {
+              List<int> rowIndices = gameManager.gameConfig.paylines[winLine.lineId];
+              payCalculator.GeneratePayoutLinesBackend(rowIndices, rowIndices.Count);
+          }
+      }
+  }
+
+  private void DrawSingleWinLine(WinLine winLine)
+  {
+      if (payCalculator == null || gameManager?.gameConfig?.paylines == null) return;
+      payCalculator.ResetLines();
+
+      if (winLine.lineId >= 0 && winLine.lineId < gameManager.gameConfig.paylines.Count)
+      {
+          List<int> rowIndices = gameManager.gameConfig.paylines[winLine.lineId];
+          payCalculator.GeneratePayoutLinesBackend(rowIndices, rowIndices.Count);
+      }
   }
 
   #endregion

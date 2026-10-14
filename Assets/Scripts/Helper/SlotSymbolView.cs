@@ -79,7 +79,7 @@ public class SlotSymbolView : MonoBehaviour
   // a mesh rebuild, so the filler reshuffle only pays that cost when the pig actually
   // changes — re-rolling the same id, or rolling a sprite id, is free.
   private SkeletonDataAsset appliedSkeleton;
-
+  private SkeletonDataAsset symbolSkeleton;
   // The symbol's resting sprite, kept so a finished win animation can be undone.
   private Sprite restingSprite;
 
@@ -118,6 +118,13 @@ public class SlotSymbolView : MonoBehaviour
     }
   }
 
+#if UNITY_EDITOR
+  private void OnValidate()
+  {
+    if (spineGraphic?.canvasRenderers != null) spineGraphic.canvasRenderers.RemoveAll(r => r == null);
+  }
+#endif
+
   private void Awake()
   {
     if (imageAnimation == null && iconImage != null)
@@ -129,7 +136,11 @@ public class SlotSymbolView : MonoBehaviour
     // Frozen is the default state for the whole life of the cell — a resting symbol must
     // not tick, or its rigged bones drift as the column tweens. Only StartStagedAnimation
     // lifts it, and StopWinAnimation puts it back.
-    if (spineGraphic != null) spineGraphic.freeze = true;
+    if (spineGraphic != null)
+    {
+      spineGraphic.canvasRenderers?.RemoveAll(r => r == null);
+      spineGraphic.freeze = true;
+    }
 
     homeParent = transform.parent;
     homeSiblingIndex = transform.GetSiblingIndex();
@@ -187,16 +198,20 @@ public class SlotSymbolView : MonoBehaviour
   internal void SetSymbol(int id, Sprite sprite, SkeletonDataAsset skeleton)
   {
     SymbolId = id;
+    symbolSkeleton = skeleton; // store for win animations
 
-    if (skeleton != null && spineGraphic != null)
-      ShowSpine(skeleton);
-    else
+    if (sprite != null)// show the sprite icon and disable Spine while idle
       ShowSprite(sprite);
+    // if (skeleton != null && spineGraphic != null)
+    //   ShowSpine(skeleton);
+    // else
+    //   ShowSprite(sprite);
   }
 
   private void ShowSprite(Sprite sprite)
   {
     IsSpineMode = false;
+    appliedSkeleton = null;
 
     if (spineGraphic != null && spineGraphic.gameObject.activeSelf)
       spineGraphic.gameObject.SetActive(false);
@@ -231,6 +246,7 @@ public class SlotSymbolView : MonoBehaviour
     // SkeletonGraphic will not build on an inactive GameObject, so activate first.
     if (!spineGraphic.gameObject.activeSelf) spineGraphic.gameObject.SetActive(true);
 
+    spineGraphic.allowMultipleCanvasRenderers = true;
     if (appliedSkeleton != skeleton)
     {
       spineGraphic.skeletonDataAsset = skeleton;
@@ -268,6 +284,20 @@ public class SlotSymbolView : MonoBehaviour
     spineGraphic.freeze = false;
     spineGraphic.Skeleton.UpdateWorldTransform(Spine.Skeleton.Physics.Reset);
     spineGraphic.UpdateMesh();
+
+    int count = spineGraphic.skeletonDataAsset?.atlasAssets?[0]?.MaterialCount ?? 1;
+    bool refresh = false;
+    for (int i = 0; spineGraphic.canvasRenderers != null && i < spineGraphic.canvasRenderers.Count; i++)
+    {
+      var cr = spineGraphic.canvasRenderers[i];
+      if (cr != null && cr.gameObject.activeSelf != (i < count))
+      {
+        cr.gameObject.SetActive(i < count);
+        if (i < count) refresh = true;
+      }
+    }
+    if (refresh) spineGraphic.UpdateMesh();
+
     spineGraphic.freeze = true;
   }
 
@@ -342,9 +372,13 @@ public class SlotSymbolView : MonoBehaviour
   /// </summary>
   internal bool StageSpineAnimation(string animationName, string skinName, System.Action onFinished)
   {
-    if (!IsSpineMode || spineGraphic == null || string.IsNullOrEmpty(animationName)) return false;
+    if (spineGraphic == null || symbolSkeleton == null || string.IsNullOrEmpty(animationName)) return false;
+    // Activate Spine and hide IconImage for this winning cell
+    if (!IsSpineMode)
+    {
+        ShowSpine(symbolSkeleton);
+    }
     if (spineGraphic.Skeleton == null) return false;
-
     // Refuse a name the skeleton does not have. SetAnimation would throw on it, and a throw
     // inside the start loop leaves every cell after this one un-started with its pending
     // count already raised — the stage then waits out its whole safety timeout.
@@ -628,14 +662,25 @@ public class SlotSymbolView : MonoBehaviour
         iconImage.sprite = restingSprite;
     }
 
-    if (IsSpineMode && spineGraphic != null)
+    if (IsSpineMode)
     {
-      if (spineGraphic.AnimationState != null) spineGraphic.AnimationState.ClearTracks();
-      if (spineGraphic.Skeleton != null) spineGraphic.Skeleton.SetToSetupPose();
-
-      // Back to a resting symbol: flush the setup pose to the mesh, then stop updating so
-      // the rigged bones do not drift while the column tweens.
-      FreezeSpine();
+      if (spineGraphic != null)
+      {
+        if (spineGraphic.AnimationState != null) spineGraphic.AnimationState.ClearTracks();
+        if (spineGraphic.Skeleton != null) spineGraphic.Skeleton.SetToSetupPose();
+        // Back to a resting symbol: flush the setup pose to the mesh, then stop updating so
+        // the rigged bones do not drift while the column tweens.
+        FreezeSpine();
+        // Disable spine object
+        spineGraphic.gameObject.SetActive(false);
+      }
+      IsSpineMode = false;
+      // Restore IconImage
+      if (iconImage != null && restingSprite != null)
+      {
+          iconImage.sprite = restingSprite;
+          iconImage.gameObject.SetActive(true);
+      }
     }
 
     SetSymbolAlpha(1f, fadeDuration);

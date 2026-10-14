@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6b194f808b1af6499c93410e504af42, type: 3}
+  m_Name: Police_Car_Atlas
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.SpineAtlasAsset
+  textureLoadingMode: 0
+  onDemandTextureLoader: {fileID: 0}
+  atlasFile: {fileID: 4900000, guid: 74179d8c4b1eede40b51b0f7322f7c01, type: 3}
+  materials:
+  - {fileID: 2100000, guid: 5e336a85a3c105142bc5872f8547d96f, type: 2}
+  - {fileID: 2100000, guid: c4c09f580bf8f2e4a93c382c66486acc, type: 2}
+  - {fileID: 2100000, guid: 7dd3bc2dd2c7c6b4383518430686e552, type: 2}

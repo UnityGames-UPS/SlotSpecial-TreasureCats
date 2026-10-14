@@ -182,6 +182,7 @@ public class ServerSpinResponse
   public List<List<string>> matrix; // Root level matrix sent by server
   public ServerPlayerBalance player;
   public ServerPayload payload;
+  public ServerScatter scatter;
 }
 
 [Serializable]
@@ -227,6 +228,14 @@ public class ServerPayload
 
   /// <summary>Meter values AFTER this spin. The client diffs these to attribute coins.</summary>
   public ServerMeters meters;
+  public ServerScatter scatter;
+}
+
+[Serializable]
+public class ServerScatter
+{
+  public bool freeGamesTriggered;
+  public int spinsAwarded;
 }
 
 /// <summary>
@@ -459,6 +468,7 @@ public class SpinResult
   public Dictionary<string, int> yellowFSCollections;
 
   public PlayerData playerData;
+  public ServerScatter scatter;
   public FreeSpinData freeSpinData;
   public ScatterData scatterData;
   public OverlayScatterData overlayScatterData; // Keep for safety/UI compilation
@@ -729,10 +739,14 @@ public static class InitDataConverter
     double totalPay = (gameConfig != null && gameConfig.creditDivisor > 0) ? betAmount * gameConfig.creditDivisor : betAmount * 25;
     double newBalance = serverResponse.player?.balance ?? CalculateNewBalance(currentBalance, totalPay, winAmountVal);
 
-    // Free spins are server-driven. Rich Piggies reports only how many remain; the round
-    // is over the moment that hits zero while a feature is active.
-    int spinsRemaining = payload != null ? payload.freeSpinsRemaining : 0;
-    bool inFeature = payload?.activeFeature != null && payload.activeFeature.Count > 0;
+    // int spinsRemaining = payload != null ? payload.freeSpinsRemaining : 0;
+    // bool inFeature = payload?.activeFeature != null && payload.activeFeature.Count > 0;
+    var scatterObj = payload?.scatter ?? serverResponse.scatter;
+    int spinsRemaining = payload?.freeSpinsRemaining ?? 0;
+    if (spinsRemaining == 0 && scatterObj != null && scatterObj.freeGamesTriggered)
+    {
+      spinsRemaining = scatterObj.spinsAwarded;
+    }
 
     var result = new SpinResult
     {
@@ -762,16 +776,17 @@ public static class InitDataConverter
 
       // [CNY] Free-spin / scatter / feature payloads are re-authored once the piggy
       // trigger lands. Rich Piggies signals a feature through payload.activeFeature.
-      freeSpinData = null,
-      scatterData = null,
-      overlayScatterData = null,
-      stickyWilds = null,
+      // freeSpinData = null,
+      // scatterData = null,
+      // overlayScatterData = null,
+      // stickyWilds = null,
+      scatter = scatterObj,
 
       serverSpinsRemaining = spinsRemaining,
       serverSpinsUsed = 0,
-      serverTotalSpins = 0,
+      serverTotalSpins = scatterObj != null ? scatterObj.spinsAwarded : 0,
       serverTotalRoundWin = winAmountVal,
-      isRoundOver = inFeature && spinsRemaining <= 0
+      isRoundOver = spinsRemaining <= 0
     };
 
     return result;

@@ -330,11 +330,17 @@ public class GameManager : MonoBehaviour
   {
     if (isInFreeSpins || pendingRound != null) return;
 
-    var contributors = PigFeatures.Parse(lastResult.triggeredFeatures);
-    if (contributors == PigFeature.None) return;
+    // var contributors = PigFeatures.Parse(lastResult.triggeredFeatures);
+    // if (contributors == PigFeature.None) return;
 
-    pendingRound = FreeSpinRound.FromTrigger(contributors, lastResult.serverSpinsRemaining,
-                                             lastResult.meters, lastResult.winAmount);
+    // pendingRound = FreeSpinRound.FromTrigger(contributors, lastResult.serverSpinsRemaining,
+    //                                          lastResult.meters, lastResult.winAmount);
+
+    if (lastResult?.scatter != null && lastResult.scatter.freeGamesTriggered)
+    {
+      int spins = lastResult.scatter.spinsAwarded > 0 ? lastResult.scatter.spinsAwarded : lastResult.serverSpinsRemaining;
+      pendingRound = FreeSpinRound.FromTrigger(PigFeature.None, spins, lastResult.meters, lastResult.winAmount);
+    }
   }
 
   private void OnReelsStoppedComplete()
@@ -379,8 +385,8 @@ public class GameManager : MonoBehaviour
     // The coin flights have already landed by now — SlotView runs them inside StopSpin, before
     // this fires — so this is the moment the brief calls for: the triggering pigs light up and
     // the others darken, and the win presentation then plays on top of that.
-    if (pendingRound != null && pigMeters != null)
-      pigMeters.EnterTriggerState(pendingRound.contributors);
+    // if (pendingRound != null && pigMeters != null)
+    //   pigMeters.EnterTriggerState(pendingRound.contributors);
 
     if (lastResult != null && lastResult.winLines != null && lastResult.winLines.Count > 0)
     {
