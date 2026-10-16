@@ -11,6 +11,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameManager gameManager;
     [SerializeField] private PopupManager popupManager;
     [SerializeField] private JSFunctCalls jsFunctCalls;
+    [SerializeField] private OrientationChange orientationChange;
 
     [Header("Loading & Intro")]
     [SerializeField] private GameObject gameScreen;
@@ -135,7 +136,8 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TMP_Text ruleYachtAKText;
     [Tooltip("Shared paytable rows for Q, J and 10 (ids 7, 8, 9).")]
     [SerializeField] private TMP_Text ruleQJ10Text;
-
+    [Header("Game Rules Dynamic Texts Portrait")]
+    [SerializeField] private TMP_Text totalLineCountTextPortrait;
     [Header("Free Spin Count Display - Game Screen")]
     [Tooltip("The FreeSpinDisplay panel. Shown for the whole round, from the trigger popup " +
              "closing to the outro finishing.\n\n" +
@@ -168,7 +170,29 @@ public class UIManager : MonoBehaviour
     [Header("Ping Display")]
     [SerializeField] private TMP_Text pingText;
     [SerializeField] private TMP_Text pingTextPortrait;
+    [Header("Platform Jackpot")]
+    [SerializeField] private TMP_Text grandJackpotText;
+    [SerializeField] private TMP_Text majorJackpotText;
+    [SerializeField] private TMP_Text minorJackpotText;
+    [SerializeField] private TMP_Text miniJackpotText;
 
+    [Header("Platform Jackpot - Portrait")]
+    [SerializeField] private TMP_Text grandJackpotTextPortrait;
+    [SerializeField] private TMP_Text majorJackpotTextPortrait;
+    [SerializeField] private TMP_Text minorJackpotTextPortrait;
+    [SerializeField] private TMP_Text miniJackpotTextPortrait;
+
+    [Header("Platform Jackpot Animation - Portrait")]
+    [SerializeField] private RectTransform grandJackpotPortraitParent;
+    [SerializeField] private RectTransform majorJackpotPortraitParent;
+    [SerializeField] private RectTransform minorJackpotPortraitParent;
+    [SerializeField] private RectTransform miniJackpotPortraitParent;
+    [SerializeField] private bool enableJackpotPortraitLevitation = true;
+    [SerializeField] private float jackpotLevitateHeight = 10f;
+    [SerializeField] private float jackpotLevitateDuration = 1.4f;
+    [SerializeField] private float jackpotStaggerDelay = 0.15f;
+    private readonly Dictionary<Transform, Vector3> jackpotInitialLocalPositions = new Dictionary<Transform, Vector3>();
+    private readonly List<Tween> jackpotPortraitTweens = new List<Tween>();
     [Header("Expand-Shrink Controls")]
     [SerializeField] private Button expandButton;
     [SerializeField] private Button shrinkButton;
@@ -243,6 +267,7 @@ public class UIManager : MonoBehaviour
         InitializeUI();
         StartCoroutine(WaitForInitialization());
         RegisterFullscreenListener();
+        UpdateJackpotPortraitLevitationFromCurrentOrientation();
     }
 
 
@@ -1181,6 +1206,7 @@ public class UIManager : MonoBehaviour
     private void OnDisable()
     {
         OrientationChange.OnOrientationChanged -= HandleOrientationChanged;
+        StopJackpotPortraitLevitation();
     }
 
     private void HandleOrientationChanged(OrientationChange.OrientationMode mode, int width, int height)
@@ -1335,9 +1361,25 @@ public class UIManager : MonoBehaviour
     {
         SetTMPText(pingText, pingTextPortrait, content);
     }
-
-    internal void UpdateBalanceDisplay()
+    internal void UpdateJackpotDisplay(JackpotValues values)
     {
+        if (values == null) return;
+
+        SetTMPText(grandJackpotText, grandJackpotTextPortrait, FormatJackpotValue(values.grandJackpot));
+        SetTMPText(majorJackpotText, majorJackpotTextPortrait, FormatJackpotValue(values.majorJackpot));
+        SetTMPText(minorJackpotText, minorJackpotTextPortrait, FormatJackpotValue(values.minorJackpot));
+        SetTMPText(miniJackpotText, miniJackpotTextPortrait, FormatJackpotValue(values.miniJackpot));
+    }
+
+    private string FormatJackpotValue(string val)
+    {
+        if (string.IsNullOrEmpty(val)) return "$0.00";
+        return val.StartsWith("$") ? val : "$" + val;
+    }
+    internal void UpdateBalanceDisplay(bool force = false)
+    {
+        if (!force && gameManager != null && gameManager.isInFreeSpins) return;
+
         SetTMPText(balanceText, balanceTextPortrait, "BALANCE : " + FormatAmount(gameManager.playerData.balance));
     }
 
@@ -1388,6 +1430,12 @@ public class UIManager : MonoBehaviour
         SetButtonInteractable(betPlusButton, betPlusButtonPortrait, enabled);
         SetButtonInteractable(betMinusButton, betMinusButtonPortrait, enabled);
     }
+    private OrientationChange GetOrientationChange()
+    {
+        if (orientationChange != null) return orientationChange;
+        orientationChange = Object.FindFirstObjectByType<OrientationChange>();
+        return orientationChange;
+    }
 
     #endregion
 
@@ -1397,9 +1445,13 @@ public class UIManager : MonoBehaviour
     {
         if (gameManager.gameConfig == null) return;
 
-        if (totalLineCountText != null)
+        if (totalLineCountText != null && totalLineCountText.IsActive())
         {
             totalLineCountText.text = gameManager.gameConfig.paylineCount.ToString();
+        }
+        if (totalLineCountTextPortrait != null && totalLineCountTextPortrait.IsActive())
+        {
+            totalLineCountTextPortrait.text = gameManager.gameConfig.paylineCount.ToString();
         }
 
         if (gameManager.gameConfig.symbols == null) return;
@@ -1443,9 +1495,107 @@ public class UIManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        StopJackpotPortraitLevitation();
         if (balanceTween != null) balanceTween.Kill();
         if (winTween != null) winTween.Kill();
         DOTween.KillAll();
+    }
+
+    #endregion
+    #region Jackpot Portrait Levitation Animation
+
+    private void UpdateJackpotPortraitLevitationFromCurrentOrientation()
+    {
+        var oc = GetOrientationChange();
+        if (oc != null)
+        {
+            UpdateJackpotPortraitLevitation(oc.CurrentMode);
+        }
+    }
+
+    private void UpdateJackpotPortraitLevitation(OrientationChange.OrientationMode mode)
+    {
+        bool isPortrait = (mode == OrientationChange.OrientationMode.MobilePortrait || mode == OrientationChange.OrientationMode.DesktopPortrait);
+        if (isPortrait)
+        {
+            StartJackpotPortraitLevitation();
+        }
+        else
+        {
+            StopJackpotPortraitLevitation();
+        }
+    }
+
+    private List<Transform> GetJackpotPortraitTransforms()
+    {
+        List<Transform> list = new List<Transform>();
+
+        Transform grandTr = grandJackpotPortraitParent != null ? grandJackpotPortraitParent : (grandJackpotTextPortrait != null ? grandJackpotTextPortrait.transform.parent : null);
+        Transform majorTr = majorJackpotPortraitParent != null ? majorJackpotPortraitParent : (majorJackpotTextPortrait != null ? majorJackpotTextPortrait.transform.parent : null);
+        Transform minorTr = minorJackpotPortraitParent != null ? minorJackpotPortraitParent : (minorJackpotTextPortrait != null ? minorJackpotTextPortrait.transform.parent : null);
+        Transform miniTr = miniJackpotPortraitParent != null ? miniJackpotPortraitParent : (miniJackpotTextPortrait != null ? miniJackpotTextPortrait.transform.parent : null);
+
+        if (grandTr != null) list.Add(grandTr);
+        if (majorTr != null) list.Add(majorTr);
+        if (minorTr != null) list.Add(minorTr);
+        if (miniTr != null) list.Add(miniTr);
+
+        return list;
+    }
+
+    private void StartJackpotPortraitLevitation()
+    {
+        if (!enableJackpotPortraitLevitation) return;
+
+        StopJackpotPortraitLevitation();
+
+        List<Transform> portraitJackpots = GetJackpotPortraitTransforms();
+        if (portraitJackpots.Count == 0) return;
+
+        for (int i = 0; i < portraitJackpots.Count; i++)
+        {
+            Transform tr = portraitJackpots[i];
+            if (tr == null) continue;
+
+            if (!jackpotInitialLocalPositions.ContainsKey(tr))
+            {
+                jackpotInitialLocalPositions[tr] = tr.localPosition;
+            }
+
+            Vector3 startPos = jackpotInitialLocalPositions[tr];
+            tr.localPosition = startPos;
+
+            float targetY = startPos.y + jackpotLevitateHeight;
+            float delay = i * jackpotStaggerDelay;
+
+            Tween posTween = tr.DOLocalMoveY(targetY, jackpotLevitateDuration)
+                .SetEase(Ease.InOutSine)
+                .SetLoops(-1, LoopType.Yoyo)
+                .SetDelay(delay);
+
+            jackpotPortraitTweens.Add(posTween);
+        }
+    }
+
+    private void StopJackpotPortraitLevitation()
+    {
+        for (int i = 0; i < jackpotPortraitTweens.Count; i++)
+        {
+            if (jackpotPortraitTweens[i] != null && jackpotPortraitTweens[i].IsActive())
+            {
+                jackpotPortraitTweens[i].Kill();
+            }
+        }
+        jackpotPortraitTweens.Clear();
+
+        foreach (var kvp in jackpotInitialLocalPositions)
+        {
+            if (kvp.Key != null)
+            {
+                DOTween.Kill(kvp.Key);
+                kvp.Key.localPosition = kvp.Value;
+            }
+        }
     }
 
     #endregion

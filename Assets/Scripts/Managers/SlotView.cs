@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using DG.Tweening;
+using Spine.Unity;
 
 /// <summary>
 /// Reels + symbol presentation.
@@ -190,6 +191,7 @@ public class SlotView : MonoBehaviour
   // the panel would switch off and back on within a frame or two of itself, which reads as
   // a snap. Only the end of the presentation, or the next spin, takes it down.
   private bool winOverlayHeld;
+  private bool noWinOverlay;
 
   // The FREE-SPIN presentation's claim on the same panel, tracked separately because it has
   // to survive things winOverlayHeld does not — in particular the spin the free-spin intro
@@ -806,8 +808,83 @@ public class SlotView : MonoBehaviour
   private IEnumerator PlayStopAnimations()
   {
     yield return StartCoroutine(PlayMysteryReveal());
+    CheckAndSpawnStickyWilds();
     yield return StartCoroutine(PlayCoinFlights());
     yield return StartCoroutine(PlayJackpotCollections());
+  }
+
+  #endregion
+
+  #region Sticky Wilds (Free Spins)
+
+  private readonly Dictionary<SlotSymbolView, GameObject> stickyWilds = new Dictionary<SlotSymbolView, GameObject>();
+
+  private bool IsWildSymbol(int symbolId)
+  {
+    if (symbolId == 0) return true;
+    if (gameManager?.gameConfig != null)
+    {
+      if (gameManager.gameConfig.wildSymbolId == symbolId) return true;
+      if (gameManager.gameConfig.symbols != null && gameManager.gameConfig.symbols.Exists(s => s != null && s.id == symbolId && s.isWild)) return true;
+    }
+    return false;
+  }
+
+  private void CheckAndSpawnStickyWilds()
+  {
+    if (gameManager == null || !gameManager.isInFreeSpins || winAnimationLayer == null) return;
+
+    for (int col = 0; col < ReelCount; col++)
+    {
+      for (int row = 0; row < RowCount; row++)
+      {
+        var cell = ResultCell(col, row);
+        // if (cell != null && cell.SymbolId == 0 && !stickyWilds.ContainsKey(cell) && cell.spineGraphic != null)
+        if (cell != null && IsWildSymbol(cell.SymbolId) && !stickyWilds.ContainsKey(cell) && cell.spineGraphic != null)
+        {
+          var wildGo = Instantiate(cell.spineGraphic.gameObject, winAnimationLayer);
+          wildGo.transform.position = cell.spineGraphic.transform.position;
+          // wildGo.transform.position = cell.transform.position;
+          wildGo.transform.localScale = cell.spineGraphic.transform.localScale;
+          wildGo.SetActive(true);
+
+          var sg = wildGo.GetComponent<SkeletonGraphic>();
+          if (sg != null)
+          {
+            sg.freeze = false;
+            sg.allowMultipleCanvasRenderers = true;
+            var skel = GetSymbolSkeleton(cell.SymbolId) ?? GetSymbolSkeleton(0);
+            if (skel != null) sg.skeletonDataAsset = skel;
+            sg.startingAnimation = "animation";
+            sg.startingLoop = true;
+            sg.Initialize(true);
+            if (sg.canvasRenderers != null)
+            {
+              foreach (var cr in sg.canvasRenderers)
+                if (cr != null) cr.gameObject.SetActive(true);
+            }
+            var anim = sg.Skeleton?.Data?.FindAnimation("animation") ?? (sg.Skeleton?.Data?.Animations?.Count > 0 ? sg.Skeleton.Data.Animations.Items[0] : null);
+            if (anim != null) sg.AnimationState?.SetAnimation(0, anim.Name, true);
+            sg.Update(0);
+            // sg.allowMultipleCanvasRenderers = true;
+            // sg.skeletonDataAsset = GetSymbolSkeleton(0);
+            // sg.Initialize(true);
+            // sg.AnimationState.SetAnimation(0, "animation", true);
+          }
+
+          stickyWilds[cell] = wildGo;
+        }
+      }
+    }
+  }
+
+  internal void ClearStickyWilds()
+  {
+    foreach (var go in stickyWilds.Values)
+    {
+      if (go != null) Destroy(go);
+    }
+    stickyWilds.Clear();
   }
 
   #endregion
@@ -1392,6 +1469,8 @@ public class SlotView : MonoBehaviour
   /// </summary>
   internal void ShowWinLineAnimation(List<WinLine> winLines, System.Action onComplete)
   {
+    noWinOverlay = false;
+
     if (winLines == null || winLines.Count == 0)
     {
       onComplete?.Invoke();
@@ -1409,6 +1488,7 @@ public class SlotView : MonoBehaviour
   /// </summary>
   internal void ShowWinPopupOnly(double winAmount, System.Action onComplete)
   {
+    noWinOverlay = false;
     KillWinTweens();
     winAnimationCoroutine = StartCoroutine(PlayWinPopupOnly(winAmount, onComplete));
   }
@@ -1752,9 +1832,18 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
     liftedWinCells.Clear();
   }
 
+  internal void ShowNoWinOverlay()
+  {
+    noWinOverlay = true;
+    winOverlayHeld = true;
+    winDarkenOverlay?.SetActive(true);
+  }
+
   /// <summary>Drop the presentation's claim on the darkening panel and take it down.</summary>
   private void ReleaseWinOverlay()
   {
+    if (noWinOverlay) return;
+
     winOverlayHeld = false;
     SetWinOverlayActive(false);
   }
@@ -1967,6 +2056,7 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
   {
     KillAllTweens();
     KillWinTweens();
+    ClearStickyWilds();
   }
   private void DrawAllWinLines(List<WinLine> winLines)
   {

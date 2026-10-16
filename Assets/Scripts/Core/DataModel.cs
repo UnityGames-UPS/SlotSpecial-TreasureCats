@@ -12,6 +12,7 @@ public class Root
     public Features features { get; set; }
     public UiData uiData { get; set; }
     public Player player { get; set; }
+    public JackpotData jackpotData { get; set; }
 }
 
 [Serializable]

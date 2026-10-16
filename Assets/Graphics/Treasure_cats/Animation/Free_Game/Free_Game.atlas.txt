@@ -1,0 +1,7 @@
+Free_Game.png
+size:1374,911
+filter:Linear,Linear
+pma:true
+free
+bounds:2,2,1370,907
+offsets:1,1,1372,913

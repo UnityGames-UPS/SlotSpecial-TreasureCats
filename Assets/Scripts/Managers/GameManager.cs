@@ -81,7 +81,7 @@ public class GameManager : MonoBehaviour
 
     // Seed the pig / jackpot meters from the init payload's live state. Done after
     // UpdateBetAmount, because the six jackpot payouts are multiplier x current bet.
-    if (pigMeters != null && gameConfig.features != null) pigMeters.SeedFromInit(gameConfig.features);
+    // if (pigMeters != null && gameConfig.features != null) pigMeters.SeedFromInit(gameConfig.features);
 
     isInitialized = true;
     currentState = GameState.Idle;
@@ -399,6 +399,7 @@ public class GameManager : MonoBehaviour
     }
     else
     {
+      slotView?.ShowNoWinOverlay();
       OnWinAnimationComplete();
     }
   }
@@ -659,6 +660,7 @@ public class GameManager : MonoBehaviour
   private void StartFreeSpins(FreeSpinRound round)
   {
     currentRound = round;
+    slotView?.ClearStickyWilds();
 
     isInFreeSpins = true;
     freeSpinsRemaining = round.totalSpins;
@@ -730,6 +732,8 @@ public class GameManager : MonoBehaviour
       yield return freeSpinPresenter.WaitForCompletion();
     }
 
+    slotView?.ClearStickyWilds();
+
     isInFreeSpins = false;
     freeSpinsRemaining = 0;
 
@@ -776,7 +780,8 @@ public class GameManager : MonoBehaviour
 
   internal double GetTotalPay()
   {
-    double divisor = (gameConfig != null && gameConfig.creditDivisor > 0) ? gameConfig.creditDivisor : 25;
+    // double divisor = (gameConfig != null && gameConfig.creditDivisor > 0) ? gameConfig.creditDivisor : 25;
+    double divisor = (gameConfig != null && gameConfig.creditDivisor > 0) ? gameConfig.creditDivisor : (gameConfig != null && gameConfig.paylineCount > 0 ? gameConfig.paylineCount : 20);
     return currentBetAmount * divisor;
   }
 

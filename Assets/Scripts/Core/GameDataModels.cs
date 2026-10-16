@@ -4,7 +4,18 @@ using System.Linq;
 using Newtonsoft.Json;
 
 #region Server Communication Models
+[Serializable]
+public class JackpotOpenRequest
+{
+  public string type = "JACKPOT_OPEN";
+  public JackpotOpenPayload payload = new JackpotOpenPayload();
+}
 
+[Serializable]
+public class JackpotOpenPayload
+{
+  public string tier;
+}
 [Serializable]
 public class InitData
 {
@@ -13,6 +24,29 @@ public class InitData
   public ServerFeatures features;
   public ServerUIData uiData;
   public ServerPlayer player;
+  public JackpotData jackpotData;
+}
+[Serializable]
+public class JackpotData
+{
+  public JackpotValues values;
+
+}
+
+[Serializable]
+public class JackpotValues
+{
+  public string miniJackpot;
+  public string minorJackpot;
+  public string majorJackpot;
+  public string grandJackpot;
+}
+
+[Serializable]
+public class JackpotSyncData
+{
+  public string gameId;
+  public JackpotValues values;
 }
 
 [Serializable]
@@ -25,7 +59,8 @@ public class ServerGameData
   /// Lines per spin — total stake is bet x this. Rich Piggies init does NOT send it, so the
   /// default stands and matches the 25 fixed paylines.
   /// </summary>
-  public double creditDivisor = 25;
+  // public double creditDivisor = 25;
+  public double creditDivisor = 0;
 
   public int totalLines;
 }
@@ -37,6 +72,13 @@ public class ServerGameData
 [Serializable]
 public class ServerFeatures
 {
+  // [NEW - Treasure Cats Feature Models from DataModel]
+  public Scatter scatter;
+  public FreeGames freeGames;
+  public TreasureHunt treasureHunt;
+  public WildSubstitution wildSubstitution;
+
+  // [LEGACY - Retained for PigMeterController compatibility]
   public MysteryRevealFeature mysteryReveal;
   public BluePigFeature bluePig;
   public YellowPigFeature yellowPig;
@@ -359,40 +401,40 @@ public class SpinPayload
 [Serializable]
 public class GameConfig
 {
+  public InitData initData;
   public Root rootData;
   public int reelCount = 5;
   public int rowCount = 3;
-  public int symbolCount = RichPiggiesSymbols.TotalSymbolCount;
-  public int paylineCount = 25;
+
+  // public int symbolCount = RichPiggiesSymbols.TotalSymbolCount;
+  // public int wildSymbolId = RichPiggiesSymbols.Wild;
+  // public int mysterySymbolId = RichPiggiesSymbols.Mystery;
+  // public int blueCoinSymbolId = RichPiggiesSymbols.BlueCoin;
+  // public int yellowCoinSymbolId = RichPiggiesSymbols.YellowCoin;
+  // public int redCoinSymbolId = RichPiggiesSymbols.RedCoin;
+  // public int mysterySymbolId = -1;
+  // public int blueCoinSymbolId = -1;
+  // public int yellowCoinSymbolId = -1;
+  // public int redCoinSymbolId = -1;
+
+  public int symbolCount = 0;
+  public int wildSymbolId = -1;
+  public int scatterSymbolId = -1;
+  public int bonusSymbolId = -1; // For Treasure Hunt Bonus
+
+  public int paylineCount = 20;
   public List<List<int>> paylines;
   public List<double> availableBets;
   public List<SymbolInfo> symbols;
 
-  // Wild configuration
-  public int wildSymbolId = RichPiggiesSymbols.Wild;
-
-  // The locker tile. Reveals a paying symbol / Wild, and may stamp a coin on top,
-  // both BEFORE pays are evaluated — see the Mystery reveal beat in SlotView.
-  public int mysterySymbolId = RichPiggiesSymbols.Mystery;
-
-  // Blue / Yellow / Red. These never land on the strip; they arrive as a Mystery
-  // overlay only. Any combination of them triggers Free Spins.
-  public int blueCoinSymbolId = RichPiggiesSymbols.BlueCoin;
-  public int yellowCoinSymbolId = RichPiggiesSymbols.YellowCoin;
-  public int redCoinSymbolId = RichPiggiesSymbols.RedCoin;
-
   // Minimum symbols on adjacent reels from the leftmost reel for a line to pay.
   public int minMatchCount = 3;
 
-  // [CNY] Rich Piggies has no single scatter — the three coins replace it. Kept only
-  // so the remaining CNY UI paths compile; do not build new logic on it.
-  public int scatterSymbolId = -1;
-
   public int betMultiplier = 1;      // CNY is cash-bet based, multiplier default is 1
-  public double creditDivisor = 25;  // Credit divisor sent in initData
+  public double creditDivisor = 20;  // Credit divisor sent in initData
   public int maxWinMultiplier = 10000;
   public int minWinMultiplier = 10;
-  public int initialFreeSpins = 12;
+  public int initialFreeSpins = 10;
   public ExtraSpinsData extraSpinsData; // Keep to avoid compilation error in UI
 
   /// <summary>
@@ -562,71 +604,96 @@ public static class InitDataConverter
 {
   internal static GameConfig ConvertToGameConfig(InitData serverData)
   {
+    int lineCount = (serverData.gameData?.lines != null && serverData.gameData.lines.Count > 0)
+        ? serverData.gameData.lines.Count
+        : (serverData.gameData != null && serverData.gameData.totalLines > 0 ? serverData.gameData.totalLines : 20);
+
     var config = new GameConfig
     {
       reelCount = DeriveReelCount(serverData.gameData),
       rowCount = DeriveRowCount(serverData.gameData),
-      symbolCount = serverData.uiData.paylines.symbols.Count,
-      paylineCount = (serverData.gameData.lines != null && serverData.gameData.lines.Count > 0)
-          ? serverData.gameData.lines.Count
-          : serverData.gameData.totalLines,
-      paylines = serverData.gameData.lines,
-      // minMatchCount now arrives under features, not gameData — applied below.
-      availableBets = serverData.gameData.bets,
-      creditDivisor = (serverData.gameData != null && serverData.gameData.creditDivisor > 0) ? serverData.gameData.creditDivisor : 25,
-      symbols = new List<SymbolInfo>()
+      symbolCount = serverData.uiData?.paylines?.symbols != null ? serverData.uiData.paylines.symbols.Count : 0,
+      paylineCount = lineCount,
+      paylines = serverData.gameData?.lines,
+      availableBets = serverData.gameData?.bets,
+      creditDivisor = (serverData.gameData != null && serverData.gameData.creditDivisor > 0) ? serverData.gameData.creditDivisor : lineCount,
+      symbols = new List<SymbolInfo>(),
+      initData = serverData
     };
 
-    foreach (var serverSymbol in serverData.uiData.paylines.symbols)
+    if (serverData.features?.wildSubstitution?.wildSymbolIds?.Count > 0)
     {
-      var symbolInfo = new SymbolInfo
-      {
-        id = serverSymbol.id,
-        name = serverSymbol.name,
-        description = serverSymbol.description,
-        multipliers = new List<double>(),
-        matchCounts = new List<int>(),
-        isWild = serverSymbol.name.ToLower() == "wild",
-        // [CNY] Rich Piggies has no scatter symbol; the three coins carry the trigger.
-        isScatter = false
-      };
+      config.wildSymbolId = serverData.features.wildSubstitution.wildSymbolIds[0];
+    }
 
-      // payout arrives keyed by match count — { "3": 20, "4": 125, "5": 200 }, or a single
-      // "1" key on the jackpot symbols. Order descending so multipliers[0] is the longest
-      // match, which is what the paytable UI walks. matchCounts keeps the real key so the
-      // UI does not have to assume the top row is a 5-of-a-kind.
-      if (serverSymbol.payout != null)
+    if (serverData.features?.scatter != null && serverData.features.scatter.scatterSymbolId > 0)
+    {
+      config.scatterSymbolId = serverData.features.scatter.scatterSymbolId;
+    }
+
+    if (serverData.features?.treasureHunt != null && serverData.features.treasureHunt.bonusSymbolId > 0)
+    {
+      config.bonusSymbolId = serverData.features.treasureHunt.bonusSymbolId;
+    }
+
+    if (serverData.uiData?.paylines?.symbols != null)
+    {
+      foreach (var serverSymbol in serverData.uiData.paylines.symbols)
       {
-        var entries = new List<KeyValuePair<int, double>>();
-        foreach (var kv in serverSymbol.payout)
+        string nameLower = (serverSymbol.name ?? "").ToLower();
+
+        bool isWild = (serverData.features?.wildSubstitution?.wildSymbolIds != null &&
+                       serverData.features.wildSubstitution.wildSymbolIds.Contains(serverSymbol.id))
+                      || nameLower.Contains("wild");
+
+        bool isScatter = (serverData.features?.scatter != null &&
+                          serverData.features.scatter.scatterSymbolId == serverSymbol.id)
+                         || nameLower.Contains("scatter");
+
+        if (isWild && config.wildSymbolId == -1) config.wildSymbolId = serverSymbol.id;
+        if (isScatter && config.scatterSymbolId == -1) config.scatterSymbolId = serverSymbol.id;
+
+        var symbolInfo = new SymbolInfo
         {
-          if (int.TryParse(kv.Key, out int matchCount))
-            entries.Add(new KeyValuePair<int, double>(matchCount, kv.Value));
-          else
-            UnityEngine.Debug.LogError($"[InitDataConverter] Symbol '{serverSymbol.name}' has a non-numeric payout key '{kv.Key}'.");
-        }
-        entries.Sort((a, b) => b.Key.CompareTo(a.Key));
+          id = serverSymbol.id,
+          name = serverSymbol.name,
+          description = serverSymbol.description,
+          multipliers = new List<double>(),
+          matchCounts = new List<int>(),
+          isWild = isWild,
+          isScatter = isScatter
+        };
 
-        foreach (var entry in entries)
+        // payout arrives keyed by match count — { "3": 20, "4": 125, "5": 200 }
+        if (serverSymbol.payout != null)
         {
-          symbolInfo.matchCounts.Add(entry.Key);
-          symbolInfo.multipliers.Add(entry.Value);
+          var entries = new List<KeyValuePair<int, double>>();
+          foreach (var kv in serverSymbol.payout)
+          {
+            if (int.TryParse(kv.Key, out int matchCount))
+              entries.Add(new KeyValuePair<int, double>(matchCount, kv.Value));
+            else
+              UnityEngine.Debug.LogError($"[InitDataConverter] Symbol '{serverSymbol.name}' has a non-numeric payout key '{kv.Key}'.");
+          }
+          entries.Sort((a, b) => b.Key.CompareTo(a.Key));
+
+          foreach (var entry in entries)
+          {
+            symbolInfo.matchCounts.Add(entry.Key);
+            symbolInfo.multipliers.Add(entry.Value);
+          }
+
+          if (entries.Count > 0) symbolInfo.minMatch = entries[entries.Count - 1].Key;
         }
-
-        // Shortest paying run is this symbol's minimum match.
-        if (entries.Count > 0) symbolInfo.minMatch = entries[entries.Count - 1].Key;
-      }
-      config.symbols.Add(symbolInfo);
-
-      // Resolve the special ids by the backend's own names rather than trusting the
-      // RichPiggiesSymbols constants, so a server-side renumber can't silently desync.
-      switch (serverSymbol.name.ToLower())
-      {
-        case "wild": config.wildSymbolId = symbolInfo.id; break;
-        case "mystery": config.mysterySymbolId = symbolInfo.id; break;
-        case "bluecoin": config.blueCoinSymbolId = symbolInfo.id; break;
-        case "yellowcoin": config.yellowCoinSymbolId = symbolInfo.id; break;
-        case "redcoin": config.redCoinSymbolId = symbolInfo.id; break;
+        config.symbols.Add(symbolInfo);
+        // switch (serverSymbol.name.ToLower())
+        // {
+        //   case "wild": config.wildSymbolId = symbolInfo.id; break;
+        //   case "mystery": config.mysterySymbolId = symbolInfo.id; break;
+        //   case "bluecoin": config.blueCoinSymbolId = symbolInfo.id; break;
+        //   case "yellowcoin": config.yellowCoinSymbolId = symbolInfo.id; break;
+        //   case "redcoin": config.redCoinSymbolId = symbolInfo.id; break;
+        // }
       }
     }
 
@@ -635,8 +702,6 @@ public static class InitDataConverter
       if (serverData.features.minMatchCount > 0)
         config.minMatchCount = serverData.features.minMatchCount;
 
-      // The pig feature blocks and the live meters are carried on GameConfig but not yet
-      // read by anything — the meters, jackpot and Mystery presentation are still to build.
       config.features = serverData.features;
     }
 
@@ -723,7 +788,8 @@ public static class InitDataConverter
   {
     return new PlayerData
     {
-      balance = serverPlayer.balance,
+      // balance = serverPlayer.balance,
+      balance = serverPlayer != null ? serverPlayer.balance : 0,
       currentBetIndex = defaultBetIndex
     };
   }
@@ -736,7 +802,10 @@ public static class InitDataConverter
     var payload = serverResponse.payload;
 
     double winAmountVal = payload != null ? payload.winAmount : 0;
-    double totalPay = (gameConfig != null && gameConfig.creditDivisor > 0) ? betAmount * gameConfig.creditDivisor : betAmount * 25;
+    // double totalPay = (gameConfig != null && gameConfig.creditDivisor > 0) ? betAmount * gameConfig.creditDivisor : betAmount * 25;
+    double totalPay = (gameConfig != null && gameConfig.creditDivisor > 0)
+        ? betAmount * gameConfig.creditDivisor
+        : betAmount * (gameConfig != null && gameConfig.paylineCount > 0 ? gameConfig.paylineCount : 20);
     double newBalance = serverResponse.player?.balance ?? CalculateNewBalance(currentBalance, totalPay, winAmountVal);
 
     // int spinsRemaining = payload != null ? payload.freeSpinsRemaining : 0;

@@ -5,6 +5,7 @@ using UnityEngine;
 using Best.SocketIO;
 using Best.SocketIO.Events;
 using Newtonsoft.Json;
+using UnityEngine.UI;
 
 public class SocketIOManager : MonoBehaviour
 {
@@ -20,6 +21,7 @@ public class SocketIOManager : MonoBehaviour
     [SerializeField] private PopupManager popupManager;
     [SerializeField] internal JSFunctCalls JSManager;
     [SerializeField] private GameObject RaycastBlocker;
+    [SerializeField] private List<Button> buttons;
 
     private SocketManager socketManager;
     private Socket gameSocket;
@@ -32,6 +34,7 @@ public class SocketIOManager : MonoBehaviour
     internal bool isExiting;   // True when CloseSocket is called intentionally (exit button)
     private bool isDestroyed;  // True when scene is unloading or application is quitting
     private bool socketSetupStarted;
+    private bool JackpotOpen;
 
     private bool hasFocus = true;
     private float focusLostTime = 0f;
@@ -59,6 +62,43 @@ public class SocketIOManager : MonoBehaviour
         isExiting = false;
         isDestroyed = false;
         socketSetupStarted = false;
+
+        for (int i = 0; i < buttons.Count; i++)
+        {
+        buttons[i].onClick.RemoveAllListeners();
+        string buttonName = buttons[i].name;
+        buttons[i].onClick.AddListener(() => SendJackpotOpen(buttonName));
+        }
+    }
+    void SendJackpotOpen(string JackpotType)
+    {
+        if (JackpotOpen)
+        return;
+
+        JackpotOpen = true;
+
+        var request = new JackpotOpenRequest
+        {
+        type = "JACKPOT_OPEN",
+        payload = new JackpotOpenPayload
+        {
+            tier = JackpotType
+        }
+        };
+
+        string json = JsonConvert.SerializeObject(request);
+        Debug.Log($"[SocketIO] Jackpot Open request: {json}");
+        if (gameSocket != null)
+        {
+        gameSocket.Emit("request", json);
+        }
+
+        Invoke(nameof(ResetJackpotOpen), 1f);
+    }
+
+    void ResetJackpotOpen()
+    {
+        JackpotOpen = false;
     }
 
     private void Start()
@@ -163,6 +203,7 @@ public class SocketIOManager : MonoBehaviour
         gameSocket.On("pong", OnPongReceivedNoArgs);
         gameSocket.On<string>("AnotherDevice", OnAnotherDevice);
         gameSocket.On<string>("balance:sync", OnBalanceSyncReceived);
+        gameSocket.On<string>("jackpot:sync", OnJackpotSyncReceived);
 
         socketManager.Open();
     }
@@ -269,7 +310,11 @@ public class SocketIOManager : MonoBehaviour
         try
         {
 
-            var rootData = JsonConvert.DeserializeObject<Root>(jsonData);
+            // var rootData = JsonConvert.DeserializeObject<Root>(jsonData);
+            // var gameConfig = InitDataConverter.ConvertToGameConfig(rootData);
+            // var playerData = InitDataConverter.ConvertToPlayerData(rootData.player);
+
+            var rootData = JsonConvert.DeserializeObject<InitData>(jsonData);
             var gameConfig = InitDataConverter.ConvertToGameConfig(rootData);
             var playerData = InitDataConverter.ConvertToPlayerData(rootData.player);
             var initialMatrix = GenerateRandomMatrix(gameConfig.rowCount);
@@ -277,6 +322,10 @@ public class SocketIOManager : MonoBehaviour
             isInitialized = true;
 
             gameManager.OnInitDataReceived(gameConfig, playerData, initialMatrix);
+            if (rootData.jackpotData != null && rootData.jackpotData.values != null && uiManager != null)
+            {
+                uiManager.UpdateJackpotDisplay(rootData.jackpotData.values);
+            }
 
             if (RaycastBlocker) RaycastBlocker.SetActive(false);
 
@@ -371,7 +420,24 @@ public class SocketIOManager : MonoBehaviour
             Debug.LogError($"[SocketIO] Balance Sync parse failed: {e.Message}");
         }
     }
+    private void OnJackpotSyncReceived(string jsonData)
+    {
+        Debug.Log($"[SocketIO] Jackpot Sync received: {jsonData}");
 
+        try
+        {
+        var syncData = JsonConvert.DeserializeObject<JackpotSyncData>(jsonData);
+
+        if (syncData != null && syncData.values != null && uiManager != null)
+        {
+            uiManager.UpdateJackpotDisplay(syncData.values);
+        }
+        }
+        catch (Exception e)
+        {
+        Debug.LogError($"[SocketIO] Jackpot Sync parse failed: {e.Message}");
+        }
+    }
     #endregion
 
     internal void SetRaycastBlocker(bool active)
