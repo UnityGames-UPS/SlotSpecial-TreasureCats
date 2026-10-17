@@ -56,9 +56,11 @@ public class PayoutCalculation : MonoBehaviour
     //delete all lines
     internal void ResetLines()
     {
+        if (LineContainer == null) return;
         foreach (Transform child in LineContainer)
         {
-            Destroy(child.gameObject);
+            if (child != null)
+                Destroy(child.gameObject);
         }
     }
 }

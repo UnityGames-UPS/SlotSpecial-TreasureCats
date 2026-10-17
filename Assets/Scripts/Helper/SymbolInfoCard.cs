@@ -139,33 +139,46 @@ public class SymbolInfoCard : MonoBehaviour
 
         string symbolNameLower = symbolInfo != null ? (symbolInfo.name ?? "").ToLower() : "";
 
-        // Only ids 0-10 are ever tappable: Mystery is inert while its locker is closed and
-        // becomes a paying symbol or Wild once it opens, and the coins are overlays that fly
-        // away rather than cells of their own. So Wild is the single non-paying case here.
-        int wildId = (gameManager != null && gameManager.gameConfig != null)
+        int wildId = (gameManager != null && gameManager.gameConfig != null && gameManager.gameConfig.wildSymbolId >= 0)
             ? gameManager.gameConfig.wildSymbolId
-            : RichPiggiesSymbols.Wild;
+            : 0;
+        int scatterId = (gameManager != null && gameManager.gameConfig != null && gameManager.gameConfig.scatterSymbolId >= 0)
+            ? gameManager.gameConfig.scatterSymbolId
+            : 1;
+        int bonusId = (gameManager != null && gameManager.gameConfig != null && gameManager.gameConfig.bonusSymbolId >= 0)
+            ? gameManager.gameConfig.bonusSymbolId
+            : 2;
 
         bool isWild = (symbolId == wildId) || (symbolInfo != null && symbolInfo.isWild) || symbolNameLower.Contains("wild");
+        bool isScatter = (symbolId == scatterId) || (symbolInfo != null && symbolInfo.isScatter) || symbolNameLower.Contains("scatter");
+        bool isBonus = (symbolId == bonusId) || symbolNameLower.Contains("bonus");
 
         if (isWild)
         {
             // SPECIAL SYMBOL: Text alignment CENTER
             infoText.alignment = TextAlignmentOptions.Center;
-            infoText.enableWordWrapping = true;
-
-            // Server-authored copy, so the wording stays in one place. The literal is only
-            // a fallback for an init that sends no description.
-            string description = symbolInfo?.description;
-            infoText.text = !string.IsNullOrEmpty(description)
-                ? description
-                : "Substitutes for all symbols except the Blue, Yellow and Red Piggy.";
+            infoText.textWrappingMode = TextWrappingModes.Normal;
+            infoText.text = "Substitutes for all symbols except Cat Statue and BONUS.";
+        }
+        else if (isScatter)
+        {
+            // SPECIAL SYMBOL: Text alignment CENTER
+            infoText.alignment = TextAlignmentOptions.Center;
+            infoText.textWrappingMode = TextWrappingModes.Normal;
+            infoText.text = "3 / 4 / 5 anywhere award 7 / 9 / 11 free games.";
+        }
+        else if (isBonus)
+        {
+            // SPECIAL SYMBOL: Text alignment CENTER
+            infoText.alignment = TextAlignmentOptions.Center;
+            infoText.textWrappingMode = TextWrappingModes.Normal;
+            infoText.text = "One BONUS on each of reels 2, 3 and 4 starts Treasure Hunt Map.";
         }
         else
         {
             // NORMAL SYMBOL: Text alignment FLUSH
             infoText.alignment = TextAlignmentOptions.Flush;
-            infoText.enableWordWrapping = false;
+            infoText.textWrappingMode = TextWrappingModes.NoWrap;
 
             double betFactor = 1.0;
             if (gameManager != null)
@@ -186,27 +199,53 @@ public class SymbolInfoCard : MonoBehaviour
                 }
             }
 
-            if (symbolInfo != null && symbolInfo.multipliers != null && symbolInfo.multipliers.Count > 0)
+            List<int> matchCounts = symbolInfo?.matchCounts;
+            List<double> multipliers = symbolInfo?.multipliers;
+
+            if (multipliers == null || multipliers.Count == 0)
+            {
+                var defaults = InitDataConverter.GetTreasureCatsDefaultPayout(symbolId);
+                if (defaults != null)
+                {
+                    matchCounts = new List<int>();
+                    multipliers = new List<double>();
+                    foreach (var kv in defaults)
+                    {
+                        matchCounts.Add(kv.Key);
+                        multipliers.Add(kv.Value);
+                    }
+                }
+            }
+
+            if (multipliers != null && multipliers.Count > 0)
             {
                 List<string> lines = new List<string>();
 
-                for (int m = 0; m < symbolInfo.multipliers.Count; m++)
+                for (int m = 0; m < multipliers.Count; m++)
                 {
-                    // Real match count from the server payout keys — the jackpot symbols
-                    // pay on a single symbol, so counting down from 5 would be wrong.
-                    int currentMatch = (symbolInfo.matchCounts != null && m < symbolInfo.matchCounts.Count)
-                        ? symbolInfo.matchCounts[m]
+                    int currentMatch = (matchCounts != null && m < matchCounts.Count)
+                        ? matchCounts[m]
                         : 5 - m;
 
-                    double payout = symbolInfo.multipliers[m] * betFactor;
-                    lines.Add($"<color=#FFC700>X{currentMatch}</color>   {payout.ToString("0.###")}");
+                    double payout = multipliers[m] * betFactor;
+                    lines.Add($"<color=#FFC700>X{currentMatch}</color>   {payout:0.00}");
                 }
 
                 infoText.text = string.Join("\n", lines);
             }
             else
             {
-                infoText.text = "";
+                string desc = symbolInfo?.description;
+                if (!string.IsNullOrEmpty(desc) && desc != "High value symbol.")
+                {
+                    infoText.alignment = TextAlignmentOptions.Center;
+                    infoText.textWrappingMode = TextWrappingModes.Normal;
+                    infoText.text = desc;
+                }
+                else
+                {
+                    infoText.text = "";
+                }
             }
         }
     }

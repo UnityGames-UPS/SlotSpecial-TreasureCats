@@ -450,7 +450,7 @@ internal class WinPopupController : MonoBehaviour
     // appears rather than materialising and only then coming to life.
     tier.pulseGroup?.Play();
 
-    PlayFountains(tier);
+    // PlayFountains(tier);
 
     fadeTween?.Kill();
     if (winPanelGroup != null)
@@ -616,13 +616,13 @@ internal class WinPopupController : MonoBehaviour
   /// Start whichever showers this tier owns. Both slots are optional and independent — a tier
   /// may have coins, diamonds, both, or neither.
   /// </summary>
-  private static void PlayFountains(WinTier tier)
-  {
-    if (tier == null) return;
+  // private static void PlayFountains(WinTier tier)
+  // {
+  //   if (tier == null) return;
 
-    tier.coinFountain?.Play();
-    tier.diamondFountain?.Play();
-  }
+  //   tier.coinFountain?.Play();
+  //   tier.diamondFountain?.Play();
+  // }
 
   /// <summary>
   /// Stop this tier's showers. <paramref name="instant"/> cuts them dead this frame; without

@@ -55,6 +55,7 @@ public class GameManager : MonoBehaviour
 
   private Coroutine spinCoroutine;
   private bool stopRequested;
+  internal bool IsStopRequested => stopRequested;
 
   #region Initialization
 

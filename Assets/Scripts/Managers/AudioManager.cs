@@ -30,6 +30,7 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private AudioClip clipJackpotMultiplierIncrease;
     [SerializeField] private AudioClip clipMysteryReveal;
     [SerializeField] private AudioClip clipReelSpinning;
+    [SerializeField] private AudioClip clipReelAnticipation;
     [SerializeField] private AudioClip clipReelStop;
 
     [Header("Fades")]
@@ -320,6 +321,21 @@ public class AudioManager : MonoBehaviour
         }
 
         FadeIn(reelSpinSource, clipReelSpinning, SfxTargetVolume, sfxFadeInDuration);
+    }
+
+    internal void StartAnticipationSpin()
+    {
+        if (reelSpinSource == null || !_sfxEnabled) return;
+        AudioClip clip = clipReelAnticipation != null ? clipReelAnticipation : clipReelSpinning;
+        if (clip == null) return;
+
+        if (reelSpinSource.isPlaying && reelSpinSource.clip == clip)
+        {
+            FadeVolume(reelSpinSource, SfxTargetVolume, sfxFadeInDuration);
+            return;
+        }
+
+        FadeIn(reelSpinSource, clip, SfxTargetVolume, sfxFadeInDuration);
     }
 
     internal void StopReelSpin() => FadeOutAndStop(reelSpinSource, reelSpinFadeOutDuration);

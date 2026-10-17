@@ -665,7 +665,7 @@ public static class InitDataConverter
         };
 
         // payout arrives keyed by match count — { "3": 20, "4": 125, "5": 200 }
-        if (serverSymbol.payout != null)
+        if (serverSymbol.payout != null && serverSymbol.payout.Count > 0)
         {
           var entries = new List<KeyValuePair<int, double>>();
           foreach (var kv in serverSymbol.payout)
@@ -684,6 +684,20 @@ public static class InitDataConverter
           }
 
           if (entries.Count > 0) symbolInfo.minMatch = entries[entries.Count - 1].Key;
+        }
+        else
+        {
+          var defaultPayout = GetTreasureCatsDefaultPayout(serverSymbol.id);
+          if (defaultPayout != null)
+          {
+            foreach (var entry in defaultPayout)
+            {
+              symbolInfo.matchCounts.Add(entry.Key);
+              symbolInfo.multipliers.Add(entry.Value);
+            }
+            if (symbolInfo.matchCounts.Count > 0)
+              symbolInfo.minMatch = symbolInfo.matchCounts[symbolInfo.matchCounts.Count - 1];
+          }
         }
         config.symbols.Add(symbolInfo);
         // switch (serverSymbol.name.ToLower())
@@ -729,13 +743,27 @@ public static class InitDataConverter
       {
           foreach (var sym in root.uiData.paylines.symbols)
           {
-              config.symbols.Add(new SymbolInfo
+              var symInfo = new SymbolInfo
               {
                   id = sym.id,
                   name = sym.name,
                   description = sym.description,
+                  multipliers = new List<double>(),
+                  matchCounts = new List<int>(),
                   isWild = sym.name != null && sym.name.ToLower().Contains("wild")
-              });
+              };
+              var defaultPayout = GetTreasureCatsDefaultPayout(sym.id);
+              if (defaultPayout != null)
+              {
+                  foreach (var entry in defaultPayout)
+                  {
+                      symInfo.matchCounts.Add(entry.Key);
+                      symInfo.multipliers.Add(entry.Value);
+                  }
+                  if (symInfo.matchCounts.Count > 0)
+                      symInfo.minMatch = symInfo.matchCounts[symInfo.matchCounts.Count - 1];
+              }
+              config.symbols.Add(symInfo);
           }
       }
 
@@ -745,7 +773,68 @@ public static class InitDataConverter
       if (root.features?.scatter != null)
           config.scatterSymbolId = root.features.scatter.scatterSymbolId;
 
+      if (root.features?.treasureHunt != null && root.features.treasureHunt.bonusSymbolId > 0)
+          config.bonusSymbolId = root.features.treasureHunt.bonusSymbolId;
+
       return config;
+  }
+
+  public static List<KeyValuePair<int, double>> GetTreasureCatsDefaultPayout(int symbolId)
+  {
+    switch (symbolId)
+    {
+      case 10: // Necklace
+        return new List<KeyValuePair<int, double>>
+        {
+          new KeyValuePair<int, double>(5, 500),
+          new KeyValuePair<int, double>(4, 250),
+          new KeyValuePair<int, double>(3, 50),
+          new KeyValuePair<int, double>(2, 5)
+        };
+      case 11: // Gem Ring
+        return new List<KeyValuePair<int, double>>
+        {
+          new KeyValuePair<int, double>(5, 400),
+          new KeyValuePair<int, double>(4, 200),
+          new KeyValuePair<int, double>(3, 40),
+          new KeyValuePair<int, double>(2, 4)
+        };
+      case 8: // Crown
+        return new List<KeyValuePair<int, double>>
+        {
+          new KeyValuePair<int, double>(5, 300),
+          new KeyValuePair<int, double>(4, 150),
+          new KeyValuePair<int, double>(3, 30),
+          new KeyValuePair<int, double>(2, 3)
+        };
+      case 9: // Pocket Watch
+        return new List<KeyValuePair<int, double>>
+        {
+          new KeyValuePair<int, double>(5, 200),
+          new KeyValuePair<int, double>(4, 100),
+          new KeyValuePair<int, double>(3, 20),
+          new KeyValuePair<int, double>(2, 2)
+        };
+      case 7: // Cat Portrait / Painting
+        return new List<KeyValuePair<int, double>>
+        {
+          new KeyValuePair<int, double>(5, 100),
+          new KeyValuePair<int, double>(4, 50),
+          new KeyValuePair<int, double>(3, 10)
+        };
+      case 3: // red cat
+      case 4: // Purple Cat
+      case 5: // Blue Cat
+      case 6: // Green Cat
+        return new List<KeyValuePair<int, double>>
+        {
+          new KeyValuePair<int, double>(5, 30),
+          new KeyValuePair<int, double>(4, 15),
+          new KeyValuePair<int, double>(3, 8)
+        };
+      default:
+        return null;
+    }
   }
 
   internal static PlayerData ConvertToPlayerData(Player player)

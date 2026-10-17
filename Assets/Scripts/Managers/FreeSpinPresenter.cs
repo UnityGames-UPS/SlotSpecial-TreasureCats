@@ -147,6 +147,7 @@ internal class FreeSpinPresenter : MonoBehaviour
 
   [Tooltip("Dismisses the congratulations popup and collects winnings.")]
   [SerializeField] private Button congratsCollectButton;
+  [SerializeField] private Spine.Unity.SkeletonGraphic congratsSpine;
 
   [Tooltip("Looping background animation behind the congratulations panel.")]
   [SerializeField] private ImageAnimation congratsBgAnim;
@@ -475,7 +476,10 @@ internal class FreeSpinPresenter : MonoBehaviour
       dismissRequested = true;
       AudioManager.Instance?.PlayButton();
     }
-    OnCollectPressed();
+    if (congratsPopup != null && congratsPopup.activeInHierarchy)
+    {
+      OnCollectPressed();
+    }
   }
 
   /// <summary>
@@ -805,6 +809,14 @@ internal class FreeSpinPresenter : MonoBehaviour
 
     // Force update the balance text now that player collects the money!
     uiManager?.UpdateBalanceDisplay(force: true);
+    
+    var spine = congratsSpine != null ? congratsSpine : congratsPopup?.GetComponentInChildren<Spine.Unity.SkeletonGraphic>(true);
+    if (spine != null)
+    {
+      if (spine.AnimationState == null) spine.Initialize(false);
+      var track = spine.AnimationState?.SetAnimation(0, "End", loop: false);
+      if (track != null) yield return new WaitForSeconds(track.Animation.Duration);
+    }
 
     // Stopped before the panel closes so the shower's own fade overlaps it, rather than the
     // coins cutting out the instant the thing they decorate has gone.

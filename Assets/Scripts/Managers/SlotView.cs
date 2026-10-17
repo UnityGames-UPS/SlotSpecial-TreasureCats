@@ -174,6 +174,14 @@ public class SlotView : MonoBehaviour
   [Tooltip("Beat between a coin reaching its pig and that pig sending its jackpot coin on.")]
   [SerializeField] private float jackpotCoinDelay = 0.15f;
 
+  [Header("Golden Reel Anticipation")]
+  [SerializeField] private ImageAnimation[] goldenReelEffects;
+  [SerializeField] private int goldenCatSymbolId = 1;
+  [SerializeField] private int bonusSymbolId = 2;
+  [SerializeField] private int minGoldenCatsForAnticipation = 2;
+  [SerializeField] private float normalAnticipationDuration = 2.5f;
+  [SerializeField] private float turboAnticipationDuration = 1.0f;
+
   [Header("Symbol Info Card")]
   [SerializeField] private SymbolInfoCard symbolInfoCard;
 
@@ -426,6 +434,11 @@ public class SlotView : MonoBehaviour
         var handler = cell.GetComponent<SymbolButtonHandler>();
         if (handler == null) handler = cell.gameObject.AddComponent<SymbolButtonHandler>();
         handler.Init(col, row, this);
+
+        if (cell.iconImage != null)
+        {
+          cell.iconImage.raycastTarget = true;
+        }
       }
     }
   }
@@ -618,6 +631,7 @@ public class SlotView : MonoBehaviour
 
   private void ResetAllCellVisuals()
   {
+    StopAllGoldenEffects();
     if (allCells == null) return;
     foreach (var column in allCells)
     {
@@ -651,6 +665,7 @@ public class SlotView : MonoBehaviour
     KillAllTweens();
     DisableAllOverlays();
     ResetAllCellVisuals();
+    StopAllGoldenEffects();
 
     // ResetAllCellVisuals already hid any locker still up from an interrupted reveal; this
     // drops our claim on those cells so the new round starts from an empty list.
@@ -749,10 +764,46 @@ public class SlotView : MonoBehaviour
 
     float stagger = turbo ? turboStopStagger : reelStopStagger;
     bool playedStopOnce = false;
+    int landedGoldenCats = 0;
+    int landedBonusSymbols = 0;
+    bool anticipationActive = false;
 
     for (int col = 0; col < count; col++)
     {
+      if (!immediate && anticipationActive)
+      {
+        SetGoldenEffect(col, true);
+        float duration = turbo ? turboAnticipationDuration : normalAnticipationDuration;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+          if (gameManager != null && gameManager.IsStopRequested)
+          {
+            immediate = true;
+            StopAllGoldenEffects();
+            break;
+          }
+          elapsed += Time.unscaledDeltaTime;
+          yield return null;
+        }
+        SetGoldenEffect(col, false);
+      }
+
       StopColumn(col);
+
+      landedGoldenCats += CountGoldenCatsInColumn(col);
+      if (col <= 1)
+        landedBonusSymbols += CountBonusInColumn(col);
+
+      // Trigger golden anticipation effect one by one
+      if (!anticipationActive && !immediate)
+      {
+        if (landedGoldenCats >= minGoldenCatsForAnticipation || landedBonusSymbols >= 2)
+        {
+          anticipationActive = true;
+          AudioManager.Instance?.StartAnticipationSpin();
+        }
+      }
 
       if (!immediate)
       {
@@ -765,6 +816,8 @@ public class SlotView : MonoBehaviour
         playedStopOnce = true;
       }
     }
+
+    StopAllGoldenEffects();
 
     // Every column is now on its way down, so nothing is visibly spinning any more. Fading out
     // after the settle tween would leave the loop running under the last reel's overshoot.
@@ -885,6 +938,58 @@ public class SlotView : MonoBehaviour
       if (go != null) Destroy(go);
     }
     stickyWilds.Clear();
+  }
+
+  #endregion
+
+  #region Golden Reel Anticipation
+
+  private int GetBonusSymbolId()
+  {
+    if (gameManager?.gameConfig != null && gameManager.gameConfig.bonusSymbolId > 0)
+      return gameManager.gameConfig.bonusSymbolId;
+    return bonusSymbolId;
+  }
+
+  private int CountSymbolInColumn(int col, int symbolId)
+  {
+    if (currentDisplayMatrix == null || col < 0 || col >= currentDisplayMatrix.Count) return 0;
+    var column = currentDisplayMatrix[col];
+    if (column == null) return 0;
+    int count = 0;
+    for (int row = 0; row < column.Count; row++)
+      if (column[row] == symbolId) count++;
+    return count;
+  }
+
+  private int CountGoldenCatsInColumn(int col) => CountSymbolInColumn(col, goldenCatSymbolId);
+  private int CountBonusInColumn(int col) => CountSymbolInColumn(col, GetBonusSymbolId());
+
+  private void SetGoldenEffect(int col, bool active)
+  {
+    if (goldenReelEffects == null || goldenReelEffects.Length == 0) return;
+    ImageAnimation effect = null;
+    if (col >= 0 && col < goldenReelEffects.Length)
+      effect = goldenReelEffects[col];
+
+    if (effect == null && goldenReelEffects.Length == 1 && goldenReelEffects[0] != null)
+    {
+      effect = goldenReelEffects[0];
+      if (active && reelTransforms != null && col >= 0 && col < reelTransforms.Length && reelTransforms[col] != null)
+        effect.transform.localPosition = new Vector3(reelTransforms[col].localPosition.x, effect.transform.localPosition.y, effect.transform.localPosition.z);
+    }
+
+    if (effect == null) return;
+    effect.gameObject.SetActive(active);
+    if (active) effect.StartAnimation();
+    else effect.StopAnimation();
+  }
+
+  private void StopAllGoldenEffects()
+  {
+    if (goldenReelEffects == null) return;
+    for (int i = 0; i < goldenReelEffects.Length; i++)
+      SetGoldenEffect(i, false);
   }
 
   #endregion
