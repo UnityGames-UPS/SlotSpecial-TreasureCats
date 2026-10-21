@@ -38,6 +38,7 @@ internal class FreeSpinPresenter : MonoBehaviour
   [Header("Trigger popup — FreeSpinPopups/TriggeredPopup")]
   [SerializeField] private GameObject triggeredPopup;
   [SerializeField] private RectTransform triggeredPopupRect;
+  [SerializeField] private Spine.Unity.SkeletonGraphic triggeredSpine;
 
   [Tooltip("Total free spins awarded. Sprite-sheet text — needs a sprite asset from " +
            "Assets/Fonts/CustomTextFonts, or it shows the literal <sprite=N> tags.")]
@@ -148,6 +149,10 @@ internal class FreeSpinPresenter : MonoBehaviour
   [Tooltip("Dismisses the congratulations popup and collects winnings.")]
   [SerializeField] private Button congratsCollectButton;
   [SerializeField] private Spine.Unity.SkeletonGraphic congratsSpine;
+  [SerializeField] private string congratsPopupAnim = "Pop_Up";
+  [SerializeField] private string congratsLoopAnim = "Loop";
+  [SerializeField] private string congratsEndAnim = "End";
+  [SerializeField] private AudioClip congratsCollectAudio;
 
   [Tooltip("Looping background animation behind the congratulations panel.")]
   [SerializeField] private ImageAnimation congratsBgAnim;
@@ -218,6 +223,10 @@ internal class FreeSpinPresenter : MonoBehaviour
     // Several of these ship active in the scene so the art can be authored — without this
     // they would all be visible from boot, stacked over the reels.
     SetActive(triggeredPopup, false);
+    if (triggeredSpine == null && triggeredPopup != null)
+    {
+      triggeredSpine = triggeredPopup.GetComponentInChildren<Spine.Unity.SkeletonGraphic>(true);
+    }
     SetActive(bluePopup, false);
     SetActive(yellowPopup, false);
     SetActive(wildPopup, false);
@@ -226,6 +235,10 @@ internal class FreeSpinPresenter : MonoBehaviour
     {
       congratsPopup = congratsTotalWinText.transform.parent.gameObject;
       // congratsPopupRect = congratsPopup.GetComponent<RectTransform>();
+    }
+    if (congratsSpine == null && congratsPopup != null)
+    {
+      congratsSpine = congratsPopup.GetComponentInChildren<Spine.Unity.SkeletonGraphic>(true);
     }
     SetActive(congratsPopup, false);
     SetActive(catCarRoot, false);
@@ -350,12 +363,12 @@ internal class FreeSpinPresenter : MonoBehaviour
     IsActive = true;
     uiManager?.OnWinPopupOpened();
 
-    // Take the win presentation down but KEEP the grid dark — the popups below play over it,
-    // and it stays up right through the intro until the last one has closed.
-    slotView?.SettleSymbolsForFeature();
+    if (slotView != null)
+      yield return StartCoroutine(slotView.PlayScatterTriggerAnimation());
+
 
     yield return StartCoroutine(ShowTriggeredPopup(round));
-    yield return StartCoroutine(PlayTransitionAnimation());// play the cat animation
+    yield return StartCoroutine(PlayTransitionAnimation(round));// play the cat animation
     // The badges belong to the trigger popup; the glow keeps running for the whole round.
     pigMeters?.StopWinnerLoop();
 
@@ -388,7 +401,7 @@ internal class FreeSpinPresenter : MonoBehaviour
 
   private IEnumerator ShowTriggeredPopup(FreeSpinRound round)
   {
-    if (triggeredPopup == null || triggeredPopupRect == null) yield break;
+    if (triggeredPopup == null) yield break;
 
     SpriteNumberFormatter.Apply(triggeredCountText, round.totalSpins,
                                 maxDecimals: 0, grouping: false);
@@ -396,25 +409,42 @@ internal class FreeSpinPresenter : MonoBehaviour
     ApplyRibbons(round.contributors);
 
     dismissRequested = false;
+    if (triggeredPopupRect != null) triggeredPopupRect.localScale = Vector3.one;
+
+    var spine = triggeredSpine != null ? triggeredSpine : triggeredPopup.GetComponentInChildren<Spine.Unity.SkeletonGraphic>(true);
     SetActive(triggeredPopup, true);
+    Debug.Log($"[FreeSpins] ShowTriggeredPopup activated! popup.activeInHierarchy={triggeredPopup.activeInHierarchy}");
     AudioManager.Instance?.PlayFreeSpinRewarded();
+    if (spine != null)
+    {
+      if (!spine.IsValid || spine.AnimationState == null)
+      {
+        spine.Initialize(true);
+      }
+      spine.Skeleton?.SetToSetupPose();
+      spine.AnimationState?.ClearTracks();
+      var track = spine.AnimationState?.SetAnimation(0, "Pop_Up", false);
+      // No spine.Update(0f) — let Spine drive naturally so it doesn't crash on a null AnimationState.
+      float duration = (track != null && track.Animation != null) ? track.Animation.Duration : popupScaleUpDuration;
+      yield return new WaitForSeconds(duration);
+    }
+    else
+    {
+      yield return new WaitForSeconds(popupScaleUpDuration);
+    }
 
-    triggeredPopupRect.localScale = Vector3.zero;
-    yield return triggeredPopupRect
-        .DOScale(1f, popupScaleUpDuration).SetEase(popupScaleUpEase)
-        .WaitForCompletion();
-
-    // Only once the popup is fully open. A button live during the scale-up lets a stray tap
-    // dismiss an announcement the player never actually saw.
     SetDismissButtons(true);
 
     while (!dismissRequested) yield return null;
 
     SetDismissButtons(false);
 
-    yield return triggeredPopupRect
-        .DOScale(0f, popupScaleDownDuration).SetEase(popupScaleDownEase)
-        .WaitForCompletion();
+    if (spine != null)
+    {
+      var track = spine.AnimationState?.SetAnimation(0, "End", false);
+      if (track != null && track.Animation != null)
+        yield return new WaitForSeconds(track.Animation.Duration);
+    }
 
     SetActive(triggeredPopup, false);
   }
@@ -774,6 +804,21 @@ internal class FreeSpinPresenter : MonoBehaviour
     // yield return congratsPopupRect.DOScale(1f, popupScaleUpDuration).SetEase(popupScaleUpEase)
     //                               .WaitForCompletion();
 
+    var spine = congratsSpine != null ? congratsSpine : congratsPopup?.GetComponentInChildren<Spine.Unity.SkeletonGraphic>(true);
+    if (spine != null)
+    {
+      if (spine.AnimationState == null) spine.Initialize(false);
+      spine.Skeleton?.SetToSetupPose();
+      spine.AnimationState?.ClearTracks();
+      var popTrack = spine.AnimationState?.SetAnimation(0, congratsPopupAnim, loop: false);
+      spine.AnimationState?.AddAnimation(0, congratsLoopAnim, loop: true, 0f);
+      spine.Update(0f);
+      if (popTrack != null && popTrack.Animation != null)
+      {
+        yield return new WaitForSeconds(popTrack.Animation.Duration);
+      }
+    }
+
     // Auto-discover collect button under congratsPopup if unassigned
     if (congratsCollectButton == null && congratsPopup != null)
     {
@@ -807,16 +852,15 @@ internal class FreeSpinPresenter : MonoBehaviour
 
     SetCollectButton(false);
 
-    // Force update the balance text now that player collects the money!
-    uiManager?.UpdateBalanceDisplay(force: true);
-    
-    var spine = congratsSpine != null ? congratsSpine : congratsPopup?.GetComponentInChildren<Spine.Unity.SkeletonGraphic>(true);
     if (spine != null)
     {
-      if (spine.AnimationState == null) spine.Initialize(false);
-      var track = spine.AnimationState?.SetAnimation(0, "End", loop: false);
-      if (track != null) yield return new WaitForSeconds(track.Animation.Duration);
+      var track = spine.AnimationState?.SetAnimation(0, congratsEndAnim, loop: false);
+      if (track != null && track.Animation != null)
+        yield return new WaitForSeconds(track.Animation.Duration);
     }
+
+    // Force update the balance text now that player collects the money!
+    uiManager?.UpdateBalanceDisplay(force: true);
 
     // Stopped before the panel closes so the shower's own fade overlaps it, rather than the
     // coins cutting out the instant the thing they decorate has gone.
@@ -839,10 +883,23 @@ internal class FreeSpinPresenter : MonoBehaviour
 
   public void OnCollectPressed()
   {
-    Debug.Log("[FreeSpins] OnCollectPressed called!");
-    AudioManager.Instance?.PlayButton();
     if (collectRequested) return;
+    if (congratsCollectButton != null && !congratsCollectButton.interactable) return;
+
+    Debug.Log("[FreeSpins] OnCollectPressed called!");
     collectRequested = true;
+
+    if (congratsCollectAudio != null)
+    {
+      if (AudioManager.Instance != null)
+        AudioManager.Instance.PlaySfxClip(congratsCollectAudio);
+      else
+        AudioSource.PlayClipAtPoint(congratsCollectAudio, Vector3.zero);
+    }
+    else
+    {
+      AudioManager.Instance?.PlayButton();
+    }
   }
 
   /// <summary>
@@ -915,6 +972,21 @@ internal class FreeSpinPresenter : MonoBehaviour
   {
     if (catCarRoot == null) yield break;
 
+    float duration = catCarDuration;
+    var skeleton = catCarRoot.GetComponentInChildren<Spine.Unity.SkeletonGraphic>(true);
+    if (skeleton != null)
+    {
+      if (skeleton.AnimationState == null) skeleton.Initialize(false);
+      skeleton.Skeleton?.SetToSetupPose();
+      skeleton.AnimationState?.ClearTracks();
+      var track = skeleton.AnimationState?.SetAnimation(0, "animation", loop: false);
+      skeleton.Update(0f);
+      if (track != null && track.Animation != null && track.Animation.Duration > 0f)
+      {
+        duration = track.Animation.Duration;
+      }
+    }
+
     if (catCarTransitionBlackScreen != null)
     {
       catCarTransitionBlackScreen.gameObject.SetActive(true);
@@ -923,17 +995,6 @@ internal class FreeSpinPresenter : MonoBehaviour
     }
 
     SetActive(catCarRoot, true);
-
-    float duration = catCarDuration;
-    var skeleton = catCarRoot.GetComponentInChildren<Spine.Unity.SkeletonGraphic>();
-    if (skeleton != null && skeleton.AnimationState != null)
-    {
-      var track = skeleton.AnimationState.GetCurrent(0);
-      if (track != null && track.Animation != null && track.Animation.Duration > 0f)
-      {
-        duration = track.Animation.Duration;
-      }
-    }
 
     yield return new WaitForSeconds(duration);
 
@@ -949,7 +1010,7 @@ internal class FreeSpinPresenter : MonoBehaviour
     }
   }
 
-  private IEnumerator PlayTransitionAnimation()
+  private IEnumerator PlayTransitionAnimation(FreeSpinRound round)
   {
       if (transitionSpine == null) yield break;
 
@@ -961,21 +1022,27 @@ internal class FreeSpinPresenter : MonoBehaviour
           catTransitionBlackScreen.blocksRaycasts = true;
       }
 
-      // 2. Play Spine animation
+      // 2. Enable spine first so OnEnable runs and AnimationState is valid, then set animation.
       transitionSpine.gameObject.SetActive(true);
-      var track = transitionSpine.AnimationState.SetAnimation(0, transitionAnimName, loop: false);
+      if (!transitionSpine.IsValid || transitionSpine.AnimationState == null)
+      {
+          transitionSpine.Initialize(true);
+      }
+      transitionSpine.Skeleton?.SetToSetupPose();
+      transitionSpine.AnimationState?.ClearTracks();
+      var track = transitionSpine.AnimationState?.SetAnimation(0, transitionAnimName, loop: false);
 
-      float spineDuration = track != null ? track.Animation.Duration : 1.5f;
+      float spineDuration = (track != null && track.Animation != null) ? track.Animation.Duration : 1.5f;
       yield return new WaitForSeconds(spineDuration);
 
       // 3. Hide the Spine animation
       transitionSpine.gameObject.SetActive(false);
 
-      // 4. (Optional & Recommended) Swap background & top counter while still black
+      // 4. Swap background & top counter while still black
       if (uiManager != null)
       {
           yield return StartCoroutine(uiManager.SwitchBackground(freeSpin: true));
-          // uiManager.ShowFreeSpinDisplay(round.totalSpins);
+          if (round != null) uiManager.ShowFreeSpinDisplay(round.totalSpins);
       }
 
       // 5. Fade out the black screen smoothly
@@ -1016,6 +1083,25 @@ internal class FreeSpinPresenter : MonoBehaviour
     CoinAnimator.Stop(congratsBgAnim);
     // CoinAnimator.Stop(motorboatAnim);
 
+    if (congratsSpine != null && congratsSpine.IsValid)
+    {
+      congratsSpine.AnimationState?.ClearTracks();
+      congratsSpine.Skeleton?.SetToSetupPose();
+    }
+
+    if (transitionSpine != null && transitionSpine.IsValid)
+    {
+      transitionSpine.AnimationState?.ClearTracks();
+      transitionSpine.Skeleton?.SetToSetupPose();
+    }
+
+    if (triggeredSpine != null && triggeredSpine.IsValid)
+    {
+      triggeredSpine.AnimationState?.ClearTracks();
+      triggeredSpine.Skeleton?.SetToSetupPose();
+    }
+
+    SetActive(triggeredPopup, false);
     SetActive(congratsPopup, false);
     ShowWinPanel(false);
     SetActive(catCarRoot, false);

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
+using Spine.Unity;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -45,8 +46,15 @@ internal class WinPopupController : MonoBehaviour
     [Tooltip("How long the popup stays up once it has faded in. The skip button cuts it short.")]
     public float holdDuration = 2f;
 
-    [Tooltip("The tier's popup object, e.g. WinPanel/NormalWinPopup. Deactivated on Awake.")]
+    [Tooltip("The tier's popup object, e.g. WinPanel/BigWinsPopup. Deactivated on Awake.")]
     public GameObject popupRoot;
+
+    [Header("Spine Animation")]
+    [Tooltip("The SkeletonGraphic component for the Big Win animation. If unassigned, automatically found on popupRoot.")]
+    public SkeletonGraphic spineGraphic;
+    public string popUpAnimation = "Pop_Up";
+    public string loopAnimation = "Loop";
+    public string endAnimation = "End";
 
     [Header("Background animation")]
     public ImageAnimation bgAnim;
@@ -58,7 +66,7 @@ internal class WinPopupController : MonoBehaviour
     [Header("Amount")]
     [Tooltip("Sprite-sheet text. One ref, not a landscape/portrait pair — the win panel " +
              "itself is shared across both orientations.")]
-    public TMP_Text amountText;
+    public TMP_Text amountText; 
 
     [Tooltip("MAXIMUM decimal places; trailing zeros are dropped, so a round number shows " +
              "no decimal point at all. 3 matches the HUD's own \"0.###\" formatting.")]
@@ -146,11 +154,16 @@ internal class WinPopupController : MonoBehaviour
   {
     if (uiManager == null) uiManager = FindFirstObjectByType<UIManager>();
 
-    // The NormalWinPopup subtree ships active in the scene. Without this it would be visible
+    // The popup subtree ships active in the scene. Without this it would be visible
     // from boot, sitting over the reels.
     if (winTiers != null)
       foreach (var tier in winTiers)
-        if (tier?.popupRoot != null) tier.popupRoot.SetActive(false);
+      {
+        if (tier == null) continue;
+        if (tier.spineGraphic == null && tier.popupRoot != null)
+          tier.spineGraphic = tier.popupRoot.GetComponentInChildren<SkeletonGraphic>(true);
+        if (tier.popupRoot != null) tier.popupRoot.SetActive(false);
+      }
 
     if (winPanelGroup != null)
     {
@@ -167,11 +180,14 @@ internal class WinPopupController : MonoBehaviour
 
     ValidateWiring();
   }
+  private WinTier GetBigWinTier()
+  {
+    if (winTiers == null || winTiers.Count == 0) return null;
+    return winTiers[0];
+  }
 
   /// <summary>
   /// Report missing references at startup rather than as a popup that quietly does nothing.
-  /// Every one of these is optional at runtime — the sequence null-checks its way past all of
-  /// them — which is precisely why an unassigned field is otherwise invisible.
   /// </summary>
   private void ValidateWiring()
   {
@@ -179,54 +195,28 @@ internal class WinPopupController : MonoBehaviour
       Debug.LogError("[WinPopupController] winPanelGroup is unassigned, so the panel can " +
                      "never fade in. Assign the CanvasGroup on WinPanel.", this);
 
-    if (winTiers == null || winTiers.Count == 0)
+    var tier = GetBigWinTier();
+    if (tier == null)
     {
-      Debug.LogError("[WinPopupController] winTiers is empty — no win will ever show a " +
-                     "popup. Add a 'Normal' entry with minMultiplier 0.", this);
+      Debug.LogError("[WinPopupController] winTiers is empty — add a 'BigWin' entry.", this);
       return;
     }
 
-    for (int i = 0; i < winTiers.Count; i++)
-    {
-      var tier = winTiers[i];
-      if (tier == null)
-      {
-        Debug.LogError($"[WinPopupController] winTiers[{i}] is empty.", this);
-        continue;
-      }
+    if (tier.popupRoot == null)
+      Debug.LogError($"[WinPopupController] Big Win tier '{tier.name}' has no popupRoot, so it " +
+                     "will play its audio and its timer but show no panel. Assign the " +
+                     "tier's popup GameObject (e.g. WinPanel/BigWinsPopup).", this);
 
-      if (tier.popupRoot == null)
-        Debug.LogError($"[WinPopupController] Tier '{tier.name}' has no popupRoot, so it " +
-                       "will play its coins and its timer but show no panel. Assign the " +
-                       "tier's popup GameObject (e.g. WinPanel/NormalWinPopup).", this);
+    if (tier.amountText == null)
+      Debug.LogError($"[WinPopupController] Big Win tier '{tier.name}' has no amountText, so the " +
+                     "win amount will not be displayed.", this);
 
-      if (tier.amountText == null)
-        Debug.LogError($"[WinPopupController] Tier '{tier.name}' has no amountText, so the " +
-                       "win amount will not be displayed.", this);
-
-      // Half-wired tier art is the nastiest case here: the popup still opens, but showing
-      // whatever word the PREVIOUS tier left on the shared Image. A Mega win labelled BIG
-      // looks like a payout bug rather than a wiring one.
-      if (tier.tierSprite != null && tier.tierImage == null)
-        Debug.LogError($"[WinPopupController] Tier '{tier.name}' has a tierSprite but no " +
-                       "tierImage, so its sprite can never be applied and the popup will " +
-                       "show whichever tier opened last. Assign the shared " +
-                       "Big/Huge/MegaTextImage.", this);
-
-      // Counting is silently skipped when there is no room for it, which looks exactly like
-      // the countUp flag not working.
-      if (tier.countUp && tier.holdDuration <= tier.countUpEndsBefore)
-        Debug.LogWarning($"[WinPopupController] Tier '{tier.name}' has countUp on but a " +
-                         $"holdDuration ({tier.holdDuration}s) at or under its " +
-                         $"countUpEndsBefore ({tier.countUpEndsBefore}s), leaving no time " +
-                         "to count in — the total will appear at once. Raise the hold or " +
-                         "lower countUpEndsBefore.", this);
-
-      if (tier.tierImage != null && tier.tierSprite == null)
-        Debug.LogError($"[WinPopupController] Tier '{tier.name}' has a tierImage but no " +
-                       "tierSprite, so it will show whichever tier opened last. Assign this " +
-                       "tier's word sprite.", this);
-    }
+    if (tier.countUp && tier.holdDuration <= tier.countUpEndsBefore)
+      Debug.LogWarning($"[WinPopupController] Tier '{tier.name}' has countUp on but a " +
+                       $"holdDuration ({tier.holdDuration}s) at or under its " +
+                       $"countUpEndsBefore ({tier.countUpEndsBefore}s), leaving no time " +
+                       "to count in — the total will appear at once. Raise the hold or " +
+                       "lower countUpEndsBefore.", this);
   }
 
   /// <summary>
@@ -247,16 +237,9 @@ internal class WinPopupController : MonoBehaviour
   {
     if (!debugHotkeys) return;
 
-    // 1-4 — play winTiers[0..3] straight away, with no spin behind them. With the tier list
-    // authored ascending that is Normal / Big / Huge / Mega.
+    // 1 — play Big Win straight away, with no spin behind it.
     if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
       DebugPlayTier(0);
-    if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2))
-      DebugPlayTier(1);
-    if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3))
-      DebugPlayTier(2);
-    if (Input.GetKeyDown(KeyCode.Alpha4) || Input.GetKeyDown(KeyCode.Keypad4))
-      DebugPlayTier(3);
 
     // 5 — skip whatever is up, exactly as the on-screen skip button does.
     if (Input.GetKeyDown(KeyCode.Alpha5) || Input.GetKeyDown(KeyCode.Keypad5))
@@ -271,26 +254,16 @@ internal class WinPopupController : MonoBehaviour
       return;
     }
 
-    if (winTiers == null || index < 0 || index >= winTiers.Count)
-    {
-      Debug.LogError($"[WinPopupController] No tier at index {index} — winTiers holds " +
-                     $"{winTiers?.Count ?? 0}. Keys 1-4 map to the first four tiers in " +
-                     "order.", this);
-      return;
-    }
-
-    var tier = winTiers[index];
+    var tier = GetBigWinTier();
     if (tier == null)
     {
-      Debug.LogError($"[WinPopupController] winTiers[{index}] is empty.", this);
+      Debug.LogError("[WinPopupController] No BigWin tier configured in winTiers.", this);
       return;
     }
 
     Debug.Log($"[WinPopupController] debug: playing tier '{tier.name}' at {debugWinAmount}.",
               this);
 
-    // Straight to the sequence, bypassing SelectTier — the point is to preview one specific
-    // tier, not to re-derive which tier debugWinAmount would land in.
     IsActive = true;
     uiManager?.OnWinPopupOpened();
     sequence = StartCoroutine(RunSequence(tier, debugWinAmount, null));
@@ -300,7 +273,7 @@ internal class WinPopupController : MonoBehaviour
   {
     if (!IsActive)
     {
-      Debug.Log("[WinPopupController] Nothing to skip — press 1-4 to play a tier.", this);
+      Debug.Log("[WinPopupController] Nothing to skip — press 1 to play the Big Win tier.", this);
       return;
     }
 
@@ -309,37 +282,16 @@ internal class WinPopupController : MonoBehaviour
 #endif
 
   /// <summary>
-  /// Whether this round earns a popup. False for a losing spin, and false when no tier
-  /// covers the multiplier — which is how a tier table with a gap at the bottom would
-  /// silently suppress popups, so keep the lowest tier at minMultiplier 0.
+  /// Whether this round earns a Big Win popup.
   /// </summary>
   internal bool ShouldShow(double winAmount, double totalPay)
   {
     if (winAmount <= 0) return false;
+    var tier = GetBigWinTier();
+    if (tier == null) return false;
+
     double multiplier = totalPay > 0 ? winAmount / totalPay : 0;
-    // Ignore wins below the first tier.
-    if (winTiers != null && winTiers.Count > 0 && multiplier < winTiers[0].minMultiplier) return false;
-
-    if (SelectTier(winAmount, totalPay) != null) return true;
-
-    // Reaching here means a real win matched no tier. Report it once — silently showing
-    // nothing looks identical to the popup being broken.
-    if (!warnedNoTierMatched)
-    {
-      warnedNoTierMatched = true;
-      // double multiplier = totalPay > 0 ? winAmount / totalPay : 0;
-
-      if (winTiers == null || winTiers.Count == 0)
-        Debug.LogError("[WinPopupController] A win of " + winAmount + " matched no tier " +
-                       "because the winTiers list is empty. Add a 'Normal' entry with " +
-                       "minMultiplier 0.", this);
-      else
-        Debug.LogError($"[WinPopupController] A win of {winAmount} at {multiplier:0.##}x " +
-                       "stake matched no tier — every entry's minMultiplier is above it. " +
-                       "The lowest tier must be minMultiplier 0 to catch every win.", this);
-    }
-
-    return false;
+    return multiplier >= tier.minMultiplier;
   }
 
   /// <summary>
@@ -393,8 +345,7 @@ internal class WinPopupController : MonoBehaviour
     activeTier = tier;
     skipRequested = false;
 
-    // Lowest tier gets the normal-win sting; every tier above it shares the big-win track.
-    AudioManager.Instance?.PlayWin(bigWin: tier != LowestTier());
+    AudioManager.Instance?.PlayWin(bigWin: true);
 
     // The panel itself, before the tier's popup inside it: Awake hides the popup by
     // deactivating it, but the shared WinPanel may also be switched off in the scene, and a
@@ -419,8 +370,31 @@ internal class WinPopupController : MonoBehaviour
       }
     }
 
-    // Which word this tier shows. Big / Huge / Mega share one popupRoot and one Image, so
-    // without this the popup would keep whichever sprite the last tier left on it.
+    if (tier.spineGraphic == null && tier.popupRoot != null)
+      tier.spineGraphic = tier.popupRoot.GetComponentInChildren<SkeletonGraphic>(true);
+
+    if (tier.spineGraphic != null)
+    {
+      if (!tier.spineGraphic.IsValid)
+        tier.spineGraphic.Initialize(true);
+
+      tier.spineGraphic.Skeleton?.SetToSetupPose();
+      tier.spineGraphic.AnimationState?.ClearTracks();
+
+      if (!string.IsNullOrEmpty(tier.popUpAnimation))
+      {
+        tier.spineGraphic.AnimationState?.SetAnimation(0, tier.popUpAnimation, false);
+        if (!string.IsNullOrEmpty(tier.loopAnimation))
+          tier.spineGraphic.AnimationState?.AddAnimation(0, tier.loopAnimation, true, 0f);
+      }
+      else if (!string.IsNullOrEmpty(tier.loopAnimation))
+      {
+        tier.spineGraphic.AnimationState?.SetAnimation(0, tier.loopAnimation, true);
+      }
+
+      tier.spineGraphic.Update(0f);
+    }
+
     if (tier.tierImage != null && tier.tierSprite != null)
       tier.tierImage.sprite = tier.tierSprite;
 
@@ -487,11 +461,7 @@ internal class WinPopupController : MonoBehaviour
         }
         else
         {
-          // The instant the count is up, not when the hold is. Deferring this to after the
-          // loop is what left the almost-right number on screen for the whole of
-          // countUpEndsBefore, snapping to the total only as the popup began to fade — the
-          // exact opposite of the intent, which is that the finished total is what the
-          // player gets to sit and read.
+          // The instant the count is up, not when the hold is.
           SpriteNumberFormatter.ApplyFixed(tier.amountText, winAmount, decimals);
           settled = true;
         }
@@ -510,11 +480,23 @@ internal class WinPopupController : MonoBehaviour
     // panel's, instead of the diamonds cutting out the instant the panel has gone.
     StopFountains(tier, instant: false);
 
+    float exitDuration = fadeOutDuration;
+    if (tier.spineGraphic != null && tier.spineGraphic.IsValid && !string.IsNullOrEmpty(tier.endAnimation))
+    {
+      var track = tier.spineGraphic.AnimationState?.SetAnimation(0, tier.endAnimation, false);
+      if (track != null && track.Animation != null)
+        exitDuration = Mathf.Max(fadeOutDuration, track.Animation.Duration);
+    }
+
     fadeTween?.Kill();
     if (winPanelGroup != null)
     {
-      fadeTween = winPanelGroup.DOFade(0f, fadeOutDuration).SetEase(Ease.InQuad);
+      fadeTween = winPanelGroup.DOFade(0f, exitDuration).SetEase(Ease.InQuad);
       yield return fadeTween.WaitForCompletion();
+    }
+    else if (exitDuration > 0f)
+    {
+      yield return new WaitForSeconds(exitDuration);
     }
 
     sequence = null;
@@ -524,41 +506,21 @@ internal class WinPopupController : MonoBehaviour
   }
 
   /// <summary>
-  /// The highest tier the round clears. The list is authored ascending, but this does not
-  /// rely on that — it takes the best match either way, so a tier appended out of order in
-  /// the Inspector still behaves.
+  /// Selects the single Big Win tier if multiplier qualifies.
   /// </summary>
   private WinTier SelectTier(double winAmount, double totalPay)
   {
-    if (winTiers == null || winAmount <= 0) return null;
+    if (winAmount <= 0) return null;
+    var tier = GetBigWinTier();
+    if (tier == null) return null;
 
-    // A zero stake would make every win infinitely large. Treat it as "no multiplier known"
-    // and fall through to the lowest tier rather than picking the top one.
     double multiplier = totalPay > 0 ? winAmount / totalPay : 0;
-
-    WinTier best = null;
-    foreach (var tier in winTiers)
-    {
-      if (tier == null || multiplier < tier.minMultiplier) continue;
-      if (best == null || tier.minMultiplier >= best.minMultiplier) best = tier;
-    }
-
-    return best;
+    return multiplier >= tier.minMultiplier ? tier : null;
   }
 
-  /// <summary>The tier with the smallest minMultiplier — the "Normal" band.</summary>
   private WinTier LowestTier()
   {
-    WinTier lowest = null;
-    if (winTiers == null) return null;
-
-    foreach (var tier in winTiers)
-    {
-      if (tier == null) continue;
-      if (lowest == null || tier.minMultiplier < lowest.minMultiplier) lowest = tier;
-    }
-
-    return lowest;
+    return GetBigWinTier();
   }
 
   private void StartBackgroundAnimation(WinTier tier)
@@ -657,6 +619,12 @@ internal class WinPopupController : MonoBehaviour
 
     if (activeTier != null)
     {
+      if (activeTier.spineGraphic != null && activeTier.spineGraphic.IsValid)
+      {
+        activeTier.spineGraphic.AnimationState?.ClearTracks();
+        activeTier.spineGraphic.Skeleton?.SetToSetupPose();
+      }
+
       CoinAnimator.Stop(activeTier.bgAnim);
 
       // Must happen on EVERY exit, not only on cancel: the pulse leaves the popup's children

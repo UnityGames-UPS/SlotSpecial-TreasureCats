@@ -333,6 +333,7 @@ public class SlotSymbolView : MonoBehaviour
   private string stagedSpineAnimation;
   private System.Action stagedOnFinished;
   private bool frameAnimationStaged;
+  private bool stagedSpineLoop;
 
 
   /// <summary>
@@ -341,7 +342,7 @@ public class SlotSymbolView : MonoBehaviour
   /// <paramref name="onFinished"/> fires once, when the sequence ends.
   /// Returns false when the cell is in Spine mode, has no ImageAnimation, or no frames.
   /// </summary>
-  internal bool StageFrameAnimation(List<Sprite> frames, float animationSpeed, System.Action onFinished)
+  internal bool StageFrameAnimation(List<Sprite> frames, float animationSpeed, System.Action onFinished, bool loop = false)
   {
     if (IsSpineMode) return false;
     if (imageAnimation == null || iconImage == null) return false;
@@ -350,9 +351,8 @@ public class SlotSymbolView : MonoBehaviour
     imageAnimation.CancelAllPending();
     imageAnimation.textureArray = frames;
 
-    // Play the sequence ONCE. With this false, ImageAnimation raises onLoopComplete at the
-    // end of the run and then parks itself instead of re-scheduling.
-    imageAnimation.doLoopAnimation = false;
+    // Play the sequence ONCE or loop if requested.
+    imageAnimation.doLoopAnimation = loop;
 
     if (animationSpeed > 0f) imageAnimation.AnimationSpeed = animationSpeed;
     imageAnimation.onLoopComplete = _ => onFinished?.Invoke();
@@ -370,7 +370,7 @@ public class SlotSymbolView : MonoBehaviour
   /// Stage a Spine animation, switching skin first if one is named. Nothing plays until
   /// <see cref="StartStagedAnimation"/>. Returns false when the cell is not in Spine mode.
   /// </summary>
-  internal bool StageSpineAnimation(string animationName, string skinName, System.Action onFinished)
+  internal bool StageSpineAnimation(string animationName, string skinName, System.Action onFinished, bool loop = false)
   {
     if (spineGraphic == null || symbolSkeleton == null || string.IsNullOrEmpty(animationName)) return false;
     // Activate Spine and hide IconImage for this winning cell
@@ -399,6 +399,7 @@ public class SlotSymbolView : MonoBehaviour
     }
 
     stagedSpineAnimation = animationName;
+    stagedSpineLoop = loop;
     stagedOnFinished = onFinished;
     frameAnimationStaged = false;
     return true;
@@ -412,8 +413,7 @@ public class SlotSymbolView : MonoBehaviour
       // Resting skeletons are frozen (see FreezeSpine) — it has to tick again to advance.
       UnfreezeSpine();
 
-      // loop: false — one pass, then TrackEntry.Complete tells us it is done.
-      var entry = spineGraphic.AnimationState.SetAnimation(0, stagedSpineAnimation, false);
+      var entry = spineGraphic.AnimationState.SetAnimation(0, stagedSpineAnimation, stagedSpineLoop);
       var callback = stagedOnFinished;
       if (entry != null && callback != null) entry.Complete += _ => callback();
 

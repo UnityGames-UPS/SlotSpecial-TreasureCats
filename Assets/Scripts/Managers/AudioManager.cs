@@ -32,6 +32,7 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private AudioClip clipReelSpinning;
     [SerializeField] private AudioClip clipReelAnticipation;
     [SerializeField] private AudioClip clipReelStop;
+    [SerializeField] private AudioClip clipScatterTrigger;
 
     [Header("Fades")]
     [SerializeField] private float musicCrossfadeDuration = 1f;
@@ -247,6 +248,7 @@ public class AudioManager : MonoBehaviour
     /// that started longest ago is cut.
     /// </summary>
     private AudioSource PlaySfx(AudioClip clip) => PlaySfx(clip, sfxFadeInDuration);
+    internal AudioSource PlaySfxClip(AudioClip clip) => PlaySfx(clip);
 
     private AudioSource PlaySfx(AudioClip clip, float fadeInDuration, float startTime = 0f)
     {
@@ -269,6 +271,7 @@ public class AudioManager : MonoBehaviour
 
     // Buttons — every button shares one click.
     internal void PlayButton() => PlaySfx(clipButton);
+    internal void PlayScatterTrigger() => PlaySfx(clipScatterTrigger);
 
     internal void PlayGeneralButtonClick() => PlayButton();
     internal void PlayPrimaryActionButton() => PlayButton();
@@ -305,6 +308,9 @@ public class AudioManager : MonoBehaviour
 
         FadeIn(winSource, clip, SfxTargetVolume, sfxFadeInDuration);
     }
+
+    internal void PlayNormalWin() => PlayWin(bigWin: false);
+    internal void PlayBigWin()    => PlayWin(bigWin: true);
 
     internal void StopWin() => FadeOutAndStop(winSource, sfxFadeOutDuration);
 

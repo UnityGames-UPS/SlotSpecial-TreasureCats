@@ -199,7 +199,6 @@ public class SlotView : MonoBehaviour
   // the panel would switch off and back on within a frame or two of itself, which reads as
   // a snap. Only the end of the presentation, or the next spin, takes it down.
   private bool winOverlayHeld;
-  private bool noWinOverlay;
 
   // The FREE-SPIN presentation's claim on the same panel, tracked separately because it has
   // to survive things winOverlayHeld does not — in particular the spin the free-spin intro
@@ -1574,8 +1573,6 @@ public class SlotView : MonoBehaviour
   /// </summary>
   internal void ShowWinLineAnimation(List<WinLine> winLines, System.Action onComplete)
   {
-    noWinOverlay = false;
-
     if (winLines == null || winLines.Count == 0)
     {
       onComplete?.Invoke();
@@ -1593,7 +1590,6 @@ public class SlotView : MonoBehaviour
   /// </summary>
   internal void ShowWinPopupOnly(double winAmount, System.Action onComplete)
   {
-    noWinOverlay = false;
     KillWinTweens();
     winAnimationCoroutine = StartCoroutine(PlayWinPopupOnly(winAmount, onComplete));
   }
@@ -1607,6 +1603,8 @@ public class SlotView : MonoBehaviour
 
     if (winPopup != null && winPopup.ShouldShow(winAmount, totalPay))
       winPopup.Show(winAmount, totalPay, null);
+    else if (winAmount > 0)
+      AudioManager.Instance?.PlayNormalWin();
     else if (winPopup == null && !warnedNoWinPopup)
     {
       warnedNoWinPopup = true;
@@ -1668,6 +1666,10 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
       winPopup.Show(totalWinAmount, totalPay, () => popupDone = true);
       while (!popupDone)
         yield return null;
+    }
+    else if (totalWinAmount > 0)
+    {
+      AudioManager.Instance?.PlayNormalWin();
     }
 
     onComplete?.Invoke();
@@ -1858,7 +1860,7 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
   /// pose by themselves. Nothing is reparented or reset to rest here; the next pass simply
   /// restarts each animation from its first frame in place.
   /// </summary>
-  private IEnumerator PlayWinPass(List<(SlotSymbolView cell, int symbolId)> wins)
+  private IEnumerator PlayWinPass(List<(SlotSymbolView cell, int symbolId)> wins, bool loopSpine = false)
   {
     if (wins.Count == 0) yield break;
 
@@ -1887,8 +1889,8 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
       };
 
       bool didStage = anim.useSpine
-          ? cell.StageSpineAnimation(anim.spineAnimation, anim.spineSkin, onFinished)
-          : cell.StageFrameAnimation(anim.frames, anim.animationSpeed, onFinished);
+          ? cell.StageSpineAnimation(anim.spineAnimation, anim.spineSkin, onFinished, loop: loopSpine)
+          : cell.StageFrameAnimation(anim.frames, anim.animationSpeed, onFinished, loop: loopSpine);
 
       if (!didStage)
       {
@@ -1914,9 +1916,13 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
     // Every symbol starts on the SAME frame, so a pass stays visually in step.
     foreach (var cell in staged) cell.StartStagedAnimation();
 
-    // Wait on the animations themselves and nothing else. There is deliberately no timeout:
-    // a symbol that never reports completion is a bug to be found and fixed.
-    while (pending > 0) yield return null;
+    float elapsed = 0f;
+    float maxWait = 2.5f;
+    while (pending > 0 && elapsed < maxWait)
+    {
+      elapsed += Time.deltaTime;
+      yield return null;
+    }
   }
 
   /// <summary>Return one lifted cell to its resting look and its slot in the reel.</summary>
@@ -1939,16 +1945,13 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
 
   internal void ShowNoWinOverlay()
   {
-    noWinOverlay = true;
     winOverlayHeld = true;
-    winDarkenOverlay?.SetActive(true);
+    SetWinOverlayActive(true);
   }
 
   /// <summary>Drop the presentation's claim on the darkening panel and take it down.</summary>
   private void ReleaseWinOverlay()
   {
-    if (noWinOverlay) return;
-
     winOverlayHeld = false;
     SetWinOverlayActive(false);
   }
@@ -1966,6 +1969,24 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
     featureOverlayHeld = true;
     SetWinOverlayActive(true);
     EnforceWinLayerOrder();
+  }
+  internal IEnumerator PlayScatterTriggerAnimation()
+  {
+    var wins = new List<(SlotSymbolView cell, int symbolId)>();
+    if (resultCells != null)
+    {
+      foreach (var col in resultCells)
+        foreach (var cell in col.cells)
+          if (cell != null && cell.SymbolId == goldenCatSymbolId)
+            wins.Add((cell, goldenCatSymbolId));
+    }
+
+    if (wins.Count == 0) yield break;
+
+    HoldOverlayForFeature();
+    ShowWinCells(wins);
+    AudioManager.Instance?.PlayScatterTrigger();
+    yield return PlayWinPass(wins, loopSpine: true);
   }
 
   /// <summary>
@@ -2145,6 +2166,7 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
     {
       winPopup?.CancelImmediate();
       freeSpinPresenter?.CancelImmediate();
+      AudioManager.Instance?.StopWin();
     }
   }
 

@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 02952e2580be7594db1f8a7c80917ab0
+guid: 707411a4dc3341846adc224756e77598
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -126,10 +126,10 @@ TextureImporter:
       name: treasure cat _numbers_0
       rect:
         serializedVersion: 2
-        x: 108
-        y: 626
-        width: 330
-        height: 376
+        x: 24
+        y: 433
+        width: 120
+        height: 141
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -138,8 +138,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: bc2d898a92264e440bd6732f3bb0287f
-      internalID: -116028875
+      spriteID: a46509e4f7b17f3439b72f55561d29c8
+      internalID: 1428899943
       vertices: []
       indices: 
       edges: []
@@ -148,10 +148,10 @@ TextureImporter:
       name: treasure cat _numbers_1
       rect:
         serializedVersion: 2
-        x: 492
-        y: 629
-        width: 210
-        height: 373
+        x: 171
+        y: 435
+        width: 120
+        height: 141
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -160,8 +160,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 0d0d19e6766fdd84cbbb44aee3540cbd
-      internalID: -326719755
+      spriteID: 93c38b5854f8e5f4fbe5187c0f73b2ba
+      internalID: 490152419
       vertices: []
       indices: 
       edges: []
@@ -170,10 +170,10 @@ TextureImporter:
       name: treasure cat _numbers_2
       rect:
         serializedVersion: 2
-        x: 789
-        y: 624
-        width: 309
-        height: 384
+        x: 322
+        y: 431
+        width: 120
+        height: 141
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -182,8 +182,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: a1b97d884bf2a284e85525b2a293bef8
-      internalID: 1023684490
+      spriteID: 0d9212e1c6f8d954fa3ad16261f1668e
+      internalID: -998060655
       vertices: []
       indices: 
       edges: []
@@ -192,10 +192,10 @@ TextureImporter:
       name: treasure cat _numbers_3
       rect:
         serializedVersion: 2
-        x: 1158
-        y: 624
-        width: 295
-        height: 384
+        x: 458
+        y: 431
+        width: 120
+        height: 141
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -204,8 +204,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 94682e9c25fa36145926ffaf5bfae66b
-      internalID: -251174941
+      spriteID: 283f9efff2eaa3448927d64bbbc7e9e4
+      internalID: 2102441774
       vertices: []
       indices: 
       edges: []
@@ -214,10 +214,10 @@ TextureImporter:
       name: treasure cat _numbers_4
       rect:
         serializedVersion: 2
-        x: 1488
-        y: 627
-        width: 342
-        height: 380
+        x: 16
+        y: 228
+        width: 120
+        height: 141
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -226,8 +226,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: ba6ee9ef8416c3444a88ab8ebf1ad8d9
-      internalID: -106397464
+      spriteID: 6d756821e1219814da55d04f4901e9b1
+      internalID: 147661213
       vertices: []
       indices: 
       edges: []
@@ -236,10 +236,10 @@ TextureImporter:
       name: treasure cat _numbers_5
       rect:
         serializedVersion: 2
-        x: 120
-        y: 222
-        width: 281
-        height: 372
+        x: 165
+        y: 230
+        width: 120
+        height: 141
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -248,8 +248,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 2fedd95c73f6a8e4eb4f5d5dbf257f49
-      internalID: -888053696
+      spriteID: b552cd239c778c745bea50e7ae09e3f2
+      internalID: 1674861317
       vertices: []
       indices: 
       edges: []
@@ -258,10 +258,10 @@ TextureImporter:
       name: treasure cat _numbers_6
       rect:
         serializedVersion: 2
-        x: 444
-        y: 216
-        width: 318
-        height: 382
+        x: 320
+        y: 228
+        width: 120
+        height: 141
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -270,8 +270,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 7c8ecba6ed59d0e4c81d561b62ab3050
-      internalID: -383185521
+      spriteID: cb94280de0855f5469ff94fde71bf87f
+      internalID: -1639947806
       vertices: []
       indices: 
       edges: []
@@ -280,10 +280,10 @@ TextureImporter:
       name: treasure cat _numbers_7
       rect:
         serializedVersion: 2
-        x: 809
-        y: 225
-        width: 277
-        height: 369
+        x: 462
+        y: 231
+        width: 120
+        height: 141
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -292,8 +292,52 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 30fefa79f3fe1bd4b9e72603d6b40cf5
-      internalID: 618525738
+      spriteID: 330c6ca47957b1b4f847597899374239
+      internalID: -544063270
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: treasure cat _numbers_8
+      rect:
+        serializedVersion: 2
+        x: 11
+        y: 28
+        width: 120
+        height: 141
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 03194efc9de4b1047a7cc2853a93574b
+      internalID: -792151639
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: treasure cat _numbers_9
+      rect:
+        serializedVersion: 2
+        x: 165
+        y: 30
+        width: 120
+        height: 141
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: dd9c0b134e872eb4b899bc0d11585cbf
+      internalID: -1656488165
       vertices: []
       indices: 
       edges: []
@@ -302,54 +346,10 @@ TextureImporter:
       name: treasure cat _numbers_10
       rect:
         serializedVersion: 2
-        x: 1110
-        y: 211
-        width: 360
-        height: 387
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 34cad218473e2b3439dd142883080433
-      internalID: -2083946196
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: treasure cat _numbers_11
-      rect:
-        serializedVersion: 2
-        x: 1499
-        y: 221
-        width: 307
-        height: 385
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: d098d52b91202934ba2abb9045fa8181
-      internalID: -356139573
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: treasure cat _numbers_13
-      rect:
-        serializedVersion: 2
-        x: 900
-        y: 62
+        x: 321
+        y: 27
         width: 120
-        height: 124
+        height: 141
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -358,8 +358,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 25af36b0346384e4e94fc1a1f5306b3d
-      internalID: -1923290608
+      spriteID: 494f1535535811a42b86f6bf40a1ceaa
+      internalID: 447714567
       vertices: []
       indices: 
       edges: []
@@ -380,25 +380,17 @@ TextureImporter:
       - key: SpriteEditor.SliceSettings
         value: '{"sliceOnImport":false,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":64.0,"y":64.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":0,"keepEmptyRects":false,"isAlternate":false}'
     nameFileIdTable:
-      treasure cat _numbers_0: -116028875
-      treasure cat _numbers_1: -326719755
-      treasure cat _numbers_10: -2083946196
-      treasure cat _numbers_11: -356139573
-      treasure cat _numbers_12: 1383739362
-      treasure cat _numbers_13: -1923290608
-      treasure cat _numbers_14: 1617673050
-      treasure cat _numbers_15: 1382828778
-      treasure cat _numbers_16: -216184346
-      treasure cat _numbers_17: -1440570049
-      treasure cat _numbers_18: 832186349
-      treasure cat _numbers_2: 1023684490
-      treasure cat _numbers_3: -251174941
-      treasure cat _numbers_4: -106397464
-      treasure cat _numbers_5: -888053696
-      treasure cat _numbers_6: -383185521
-      treasure cat _numbers_7: 618525738
-      treasure cat _numbers_8: 165222162
-      treasure cat _numbers_9: -1530129362
+      treasure cat _numbers_0: 1428899943
+      treasure cat _numbers_1: 490152419
+      treasure cat _numbers_10: 447714567
+      treasure cat _numbers_2: -998060655
+      treasure cat _numbers_3: 2102441774
+      treasure cat _numbers_4: 147661213
+      treasure cat _numbers_5: 1674861317
+      treasure cat _numbers_6: -1639947806
+      treasure cat _numbers_7: -544063270
+      treasure cat _numbers_8: -792151639
+      treasure cat _numbers_9: -1656488165
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
