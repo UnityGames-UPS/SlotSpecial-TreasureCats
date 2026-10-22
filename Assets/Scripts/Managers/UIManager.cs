@@ -126,17 +126,6 @@ public class UIManager : MonoBehaviour
 
     [Header("Game Rules Dynamic Texts")]
     [SerializeField] private TMP_Text totalLineCountText;
-    [Tooltip("Paytable rows for BusinessPig (id 0).")]
-    [SerializeField] private TMP_Text ruleBusinessPigText;
-    [Tooltip("Paytable rows for LadyPig (id 1).")]
-    [SerializeField] private TMP_Text ruleLadyPigText;
-    [Tooltip("Shared paytable rows for BeachPig and DiamondPendant (ids 2, 3).")]
-    [SerializeField] private TMP_Text ruleBeachPigPendantText;
-    [Tooltip("Shared paytable rows for Yacht, A and K (ids 4, 5, 6).")]
-    [SerializeField] private TMP_Text ruleYachtAKText;
-    [Tooltip("Shared paytable rows for Q, J and 10 (ids 7, 8, 9).")]
-    [SerializeField] private TMP_Text ruleQJ10Text;
-    [Header("Game Rules Dynamic Texts Portrait")]
     [SerializeField] private TMP_Text totalLineCountTextPortrait;
     [Header("Free Spin Count Display - Game Screen")]
     [Tooltip("The FreeSpinDisplay panel. Shown for the whole round, from the trigger popup " +
@@ -1456,37 +1445,7 @@ public class UIManager : MonoBehaviour
 
         if (gameManager.gameConfig.symbols == null) return;
 
-        // A shared box reads the payout of the first id in its group.
-        (TMP_Text text, int symbolId)[] ruleTexts = {
-            (ruleBusinessPigText, 0),
-            (ruleLadyPigText, 1),
-            (ruleBeachPigPendantText, 2),
-            (ruleYachtAKText, 4),
-            (ruleQJ10Text, 7)
-        };
-
         double bet = gameManager.currentBetAmount;
-
-        foreach (var (text, symbolId) in ruleTexts)
-        {
-            if (text == null) continue;
-
-            var symbol = gameManager.gameConfig.symbols.Find(s => s.id == symbolId);
-            if (symbol == null || symbol.multipliers == null || symbol.multipliers.Count == 0) continue;
-
-            // multipliers are ordered by match count descending, so this reads 5 / 4 / 3.
-            var lines = new List<string>(symbol.multipliers.Count);
-            for (int m = 0; m < symbol.multipliers.Count; m++)
-            {
-                int matchCount = (symbol.matchCounts != null && m < symbol.matchCounts.Count)
-                    ? symbol.matchCounts[m]
-                    : 5 - m;
-
-                lines.Add($"{matchCount} - {FormatAmount(bet * symbol.multipliers[m])}");
-            }
-
-            text.text = string.Join("\n", lines);
-        }
     }
 
     #endregion

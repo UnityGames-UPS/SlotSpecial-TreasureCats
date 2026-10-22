@@ -55,27 +55,9 @@ internal static class PigFeatures
     return features;
   }
 
-  internal static bool Has(PigFeature set, PigFeature one) => (set & one) != 0;
-
-  internal static int Count(PigFeature set)
-  {
-    int count = 0;
-    if (Has(set, PigFeature.Blue)) count++;
-    if (Has(set, PigFeature.Yellow)) count++;
-    if (Has(set, PigFeature.Red)) count++;
-    return count;
-  }
-
-  /// <summary>The coin symbol id (12/13/14) a feature's pig owns, for PigMeterController lookups.</summary>
-  internal static int CoinSymbolId(PigFeature one)
-  {
-    if (one == PigFeature.Blue) return RichPiggiesSymbols.BlueCoin;
-    if (one == PigFeature.Yellow) return RichPiggiesSymbols.YellowCoin;
-    return RichPiggiesSymbols.RedCoin;
-  }
 
   /// <summary>All three, in meter order, so callers can iterate without repeating the list.</summary>
-  internal static readonly PigFeature[] All = { PigFeature.Blue, PigFeature.Yellow, PigFeature.Red };
+  // internal static readonly PigFeature[] All = { PigFeature.Blue, PigFeature.Yellow, PigFeature.Red };
 }
 
 /// <summary>
@@ -92,7 +74,7 @@ internal static class PigFeatures
 internal class FreeSpinRound
 {
   /// <summary>Every pig that contributed to the trigger. Drives the ribbons and the intro popups.</summary>
-  internal PigFeature contributors;
+  // internal PigFeature contributors;
 
   /// <summary>Latched from the trigger spin's freeSpinsRemaining. The FreeSpinDisplay's "of N".</summary>
   internal int totalSpins;
@@ -120,66 +102,6 @@ internal class FreeSpinRound
   /// <summary>Wilds the Red meter held at the trigger. Shown by the red (wild) intro popup.</summary>
   internal int redWildCount;
 
-  /// <summary>
-  /// The LAST free spin's meters. The server already resets the triggering pigs' meters on
-  /// that response, but the reset must not appear until the congratulations popup — so the
-  /// reel-stop resync skips that spin and the outro applies these instead.
-  /// </summary>
-  internal ServerMeters finalMeters;
-
-  /// <summary>
-  /// Build a round from the spin that triggered it.
-  ///
-  /// <paramref name="meters"/> must be the TRIGGER spin's meters. Blue and Red are read here
-  /// and not again — once the round ends the server resets them (to 9 and 15), and a popup
-  /// reading them late would show the reset value instead of the award.
-  ///
-  /// <paramref name="triggerWin"/> seeds <see cref="accumulatedWin"/>, so the round total
-  /// includes the spin that started it.
-  /// </summary>
-  internal static FreeSpinRound FromTrigger(PigFeature contributors, int freeSpinsRemaining,
-                                            ServerMeters meters, double triggerWin)
-  {
-    var round = new FreeSpinRound
-    {
-      contributors = contributors,
-      totalSpins = Mathf.Max(0, freeSpinsRemaining),
-      accumulatedWin = triggerWin,
-      blueAward = meters != null ? meters.blue : 0,
-      redWildCount = meters != null ? meters.red : 0
-    };
-
-    if (round.totalSpins <= 0)
-    {
-      Debug.LogError("[FreeSpins] A trigger arrived with freeSpinsRemaining " +
-                     $"{freeSpinsRemaining} — the round would end before its first spin. " +
-                     "The client cannot invent a spin count; check the backend payload.");
-    }
-
-    // A meter still reading its configured default on the spin that triggered that colour
-    // means the server reset it in the same response, so the popup below would announce the
-    // default instead of the award the player actually earned.
-    if (PigFeatures.Has(contributors, PigFeature.Blue) && round.blueAward == BlueDefaultMeter)
-    {
-      Debug.LogWarning($"[FreeSpins] Blue triggered but its meter reads the default " +
-                       $"{BlueDefaultMeter} on the trigger spin. The blue popup will show " +
-                       "that value. If the backend now resets the meter on the trigger " +
-                       "response rather than at the end of the round, the award has to come " +
-                       "from a new field instead.");
-    }
-
-    if (PigFeatures.Has(contributors, PigFeature.Red) && round.redWildCount == RedDefaultWilds)
-    {
-      Debug.LogWarning($"[FreeSpins] Red triggered but its meter reads the default " +
-                       $"{RedDefaultWilds} on the trigger spin — see the Blue note above.");
-    }
-
-    return round;
-  }
-
-  /// <summary>Config defaults (features.bluePig.defaultMeter / redPig.defaultWilds).</summary>
-  private const int BlueDefaultMeter = 9;
-  private const int RedDefaultWilds = 15;
 
   /// <summary>
   /// Fold one completed free spin in. <paramref name="freeSpinsRemaining"/> is the server's

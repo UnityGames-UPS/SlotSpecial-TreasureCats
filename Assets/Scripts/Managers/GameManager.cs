@@ -7,7 +7,6 @@ public class GameManager : MonoBehaviour
   [Header("References")]
   [SerializeField] internal SocketIOManager socketManager;
   [SerializeField] internal UIManager uiManager;
-  [SerializeField] internal PigMeterController pigMeters;
   [SerializeField] private PopupManager popupManager;
   [SerializeField] private SlotView slotView;
   [SerializeField] private FreeSpinPresenter freeSpinPresenter;
@@ -148,9 +147,6 @@ public class GameManager : MonoBehaviour
     UpdateBetAmount();
     uiManager.UpdateBetDisplay();
 
-    // The jackpot meters hold multipliers; what the player sees is multiplier x bet, so all
-    // six have to be repainted whenever the bet moves.
-    if (pigMeters != null) pigMeters.RefreshJackpotTexts();
 
     if (slotView != null) slotView.OnBetChanged();
   }
@@ -260,11 +256,6 @@ public class GameManager : MonoBehaviour
     {
       slotView.PopulateResultMatrix(lastResult.resultMatrix);
 
-      // Cover the Mystery cells straight away, still mid-loop. The matrix above already
-      // wrote the REVEALED symbol into them, so the locker hides it until the reels settle
-      // and SlotView opens every locker as part of its stop sequence.
-      slotView.ShowMysteryLockers(lastResult.mysteryReveals);
-
       // Coins are stamped in the same beat. Their child sits BELOW the locker, so a coin on
       // a Mystery cell stays hidden until that locker opens; a coin on a plain cell is
       // simply visible when the column parks. The meters are passed alongside because the
@@ -274,18 +265,7 @@ public class GameManager : MonoBehaviour
       // round and applied when the congratulations popup opens, not at reel stop.
       bool endsRound = isInFreeSpins && currentRound != null &&
                        (lastResult.isRoundOver || lastResult.serverSpinsRemaining <= 0);
-      if (endsRound) currentRound.finalMeters = lastResult.meters;
-
-      slotView.ShowCoinOverlays(lastResult.coinOverlays, lastResult.meters, deferMeterResync: endsRound);
-
-      // Yellow free spins: jackpot coins ride in coinOverlays too (stamped above) and fly
-      // straight to their panel. Awards are latched now and their holes cleared after this
-      // spin's win popup.
-      if (pigMeters != null)
-        pigMeters.SetPendingJackpotAwards(lastResult.jackpotWins, lastResult.yellowFSCollections);
-
-      LatchFreeSpinTrigger();
-    }
+    }    
 
     // 4. Cosmetic hold, interruptible by Stop.
     //
@@ -319,30 +299,6 @@ public class GameManager : MonoBehaviour
   private bool IsFreeSpinIntroHolding =>
       freeSpinPresenter != null && freeSpinPresenter.IsIntroBlocking;
 
-  /// <summary>
-  /// Read a free-spin trigger out of the spin payload and hold it until the presentation is
-  /// ready for it.
-  ///
-  /// Called while the reels are still looping, so the round's numbers are latched from THIS
-  /// response — in particular the Blue and Red meter values, which the server resets once the
-  /// round ends and which the intro popups have to announce.
-  /// </summary>
-  private void LatchFreeSpinTrigger()
-  {
-    if (isInFreeSpins || pendingRound != null) return;
-
-    // var contributors = PigFeatures.Parse(lastResult.triggeredFeatures);
-    // if (contributors == PigFeature.None) return;
-
-    // pendingRound = FreeSpinRound.FromTrigger(contributors, lastResult.serverSpinsRemaining,
-    //                                          lastResult.meters, lastResult.winAmount);
-
-    if (lastResult?.scatter != null && lastResult.scatter.freeGamesTriggered)
-    {
-      int spins = lastResult.scatter.spinsAwarded > 0 ? lastResult.scatter.spinsAwarded : lastResult.serverSpinsRemaining;
-      pendingRound = FreeSpinRound.FromTrigger(PigFeature.None, spins, lastResult.meters, lastResult.winAmount);
-    }
-  }
 
   private void OnReelsStoppedComplete()
   {
@@ -423,18 +379,6 @@ public class GameManager : MonoBehaviour
     // OnWinPopupClosed, which has already done it — and harmless, because the method is
     // idempotent and no-ops while any special win is still flagged.
     uiManager.EnableControlsAfterWinAnimation();
-
-    // A jackpot paid this spin: its popup has closed, so its holes empty now, before the next
-    // free spin. A no-op on every other spin.
-    // Yielded only when there is something to clear — the controls are live again, and an extra
-    // frame here on an ordinary spin would let a spin press settle this round underneath us.
-    if (pigMeters != null)
-    {
-      if (pigMeters.HasAwardedJackpotsToClear)
-        yield return StartCoroutine(pigMeters.ClearAwardedJackpots());
-      else
-        pigMeters.SyncPendingJackpotCollections();
-    }
 
     // The free-spin trigger presentation lands here, after the coin flights and the whole win
     // presentation have played. It does NOT fall through to ResumeAfterSpecialFeature: the
