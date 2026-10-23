@@ -329,7 +329,7 @@ internal class FreeSpinPresenter : MonoBehaviour
   private void SetDismissButtons(bool active)
   {
     if (okToProceedButton != null) okToProceedButton.interactable = active;
-    AudioManager.Instance?.PlayFreeSpinRewarded();
+    // AudioManager.Instance?.PlayFreeSpinRewarded();
     SetButton(startButton, active);
     SetButton(startButtonPortrait, active);
   }
@@ -347,6 +347,7 @@ internal class FreeSpinPresenter : MonoBehaviour
     {
       dismissRequested = true;
       AudioManager.Instance?.PlayButton();
+      AudioManager.Instance?.PlayFreeSpinRewarded();
     }
     if (congratsPopup != null && congratsPopup.activeInHierarchy)
     {
@@ -453,8 +454,17 @@ internal class FreeSpinPresenter : MonoBehaviour
       yield break;
     }
 
-    SpriteNumberFormatter.Apply(congratsTotalWinText, round.accumulatedWin,
-                                maxDecimals: congratsMaxDecimals, grouping: false);
+    double winAmount = round.accumulatedWin;
+    int decimals = SpriteNumberFormatter.DecimalsUsed(winAmount, congratsMaxDecimals);
+    while (decimals < congratsMaxDecimals && winAmount * Mathf.Pow(10, decimals) < 30) decimals++;
+
+    // Start at 0 using existing ApplyFixed and reset scale to 1
+    if (congratsTotalWinText != null)
+    {
+      congratsTotalWinText.transform.DOKill();
+      congratsTotalWinText.transform.localScale = Vector3.one;
+    }
+    SpriteNumberFormatter.ApplyFixed(congratsTotalWinText, 0d, decimals, grouping: false);
 
     // The shared WinPanel first. Its CanvasGroup is left at alpha 0 by WinPopupController, and
     // the panel itself may be switched off in the scene — a child activated under either
@@ -490,13 +500,9 @@ internal class FreeSpinPresenter : MonoBehaviour
       if (spine.AnimationState == null) spine.Initialize(false);
       spine.Skeleton?.SetToSetupPose();
       spine.AnimationState?.ClearTracks();
-      var popTrack = spine.AnimationState?.SetAnimation(0, congratsPopupAnim, loop: false);
+      spine.AnimationState?.SetAnimation(0, congratsPopupAnim, loop: false);
       spine.AnimationState?.AddAnimation(0, congratsLoopAnim, loop: true, 0f);
       spine.Update(0f);
-      if (popTrack != null && popTrack.Animation != null)
-      {
-        yield return new WaitForSeconds(popTrack.Animation.Duration);
-      }
     }
 
     // Auto-discover collect button under congratsPopup if unassigned
@@ -524,20 +530,45 @@ internal class FreeSpinPresenter : MonoBehaviour
       congratsCollectButton.onClick.AddListener(OnCollectPressed);
     }
 
-    // Wait for player to click collect button
+    if (congratsTotalWinText != null)
+    {
+      var textBtn = congratsTotalWinText.GetComponent<Button>() ?? congratsTotalWinText.gameObject.AddComponent<Button>();
+      textBtn.onClick.RemoveListener(OnCollectPressed);
+      textBtn.onClick.AddListener(OnCollectPressed);
+    }
+
+    // Wait for player to click collect button while counting up for 3s
     collectRequested = false;
     SetCollectButton(true);
 
-    while (!collectRequested) yield return null;
+    float elapsed = 0f;
+    while (!collectRequested)
+    {
+      if (elapsed < 3f)
+      {
+        elapsed += Time.deltaTime;
+        double current = elapsed < 3f ? winAmount * (elapsed / 3f) : winAmount;
+        SpriteNumberFormatter.ApplyFixed(congratsTotalWinText, current, decimals, grouping: false);
+      }
+      yield return null;
+    }
+
+    SpriteNumberFormatter.ApplyFixed(congratsTotalWinText, winAmount, decimals, grouping: false);
 
     SetCollectButton(false);
 
+    float shrinkDuration = 0.5f;
     if (spine != null)
     {
       var track = spine.AnimationState?.SetAnimation(0, congratsEndAnim, loop: false);
       if (track != null && track.Animation != null)
-        yield return new WaitForSeconds(track.Animation.Duration);
+        shrinkDuration = track.Animation.Duration;
     }
+
+    if (congratsTotalWinText != null)
+      congratsTotalWinText.transform.DOScale(Vector3.zero, shrinkDuration).SetEase(Ease.InBack);
+
+    yield return new WaitForSeconds(shrinkDuration);
 
     // Force update the balance text now that player collects the money!
     uiManager?.UpdateBalanceDisplay(force: true);
@@ -557,6 +588,8 @@ internal class FreeSpinPresenter : MonoBehaviour
   private void SetCollectButton(bool active)
   {
     if (congratsCollectButton != null) congratsCollectButton.interactable = active;
+    if (congratsTotalWinText != null && congratsTotalWinText.TryGetComponent<Button>(out var textBtn))
+      textBtn.interactable = active;
     SetButton(startButton, active);
     SetButton(startButtonPortrait, active);
   }
@@ -769,6 +802,12 @@ internal class FreeSpinPresenter : MonoBehaviour
 
     SetActive(triggeredPopup, false);
     SetActive(congratsPopup, false);
+    if (congratsTotalWinText != null)
+    {
+      congratsTotalWinText.transform.DOKill();
+      congratsTotalWinText.transform.localScale = Vector3.one;
+    }
+    SpriteNumberFormatter.Clear(congratsTotalWinText);
     ShowWinPanel(false);
     SetActive(catCarRoot, false);
     SetDismissButtons(false);

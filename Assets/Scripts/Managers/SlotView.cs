@@ -449,6 +449,19 @@ public class SlotView : MonoBehaviour
       return Random.Range(0, symbolSprites != null ? symbolSprites.Length : 12);
   }
 
+  // Returns a random paying symbol that is NOT Wild, Scatter, or Bonus.
+  private int RandomNonWildSymbolId()
+  {
+    if (gameManager?.gameConfig?.symbols != null && gameManager.gameConfig.symbols.Count > 0)
+    {
+      var nonWilds = gameManager.gameConfig.symbols.FindAll(s => s != null && !IsWildSymbol(s.id) && !s.isWild && !s.isScatter && s.id != goldenCatSymbolId && s.id != bonusSymbolId);
+      if (nonWilds.Count > 0)
+        return nonWilds[Random.Range(0, nonWilds.Count)].id;
+    }
+    int max = symbolSprites != null ? symbolSprites.Length : 12;
+    return Random.Range(3, max);
+  }
+
   private SlotSymbolView ResultCell(int col, int row)
   {
     if (resultCells == null || col < 0 || col >= resultCells.Count) return null;
@@ -490,7 +503,8 @@ public class SlotView : MonoBehaviour
           Debug.LogError($"[SlotView] resultCells has no cell at col {col}, row {row} — check the Inspector wiring.");
           continue;
         }
-        ApplySymbol(cell, symbolId);
+        int visualSymbolId = (stickyWilds.ContainsKey(cell)) ? RandomNonWildSymbolId() : symbolId;
+        ApplySymbol(cell, visualSymbolId);
       }
     }
   }
@@ -605,6 +619,11 @@ public class SlotView : MonoBehaviour
     DisableAllOverlays();
     ResetAllCellVisuals();
     StopAllGoldenEffects();
+
+    foreach (var cell in stickyWilds.Keys)
+    {
+      if (cell != null) ApplySymbol(cell, RandomNonWildSymbolId());
+    }
 
     // ResetAllCellVisuals already hid any locker still up from an interrupted reveal; this
     // drops our claim on those cells so the new round starts from an empty list.
@@ -951,6 +970,22 @@ public class SlotView : MonoBehaviour
     winAnimationCoroutine = StartCoroutine(PlayWinPopupOnly(winAmount, onComplete));
   }
 
+  private int CountTotalGoldenCats()
+  {
+    int count = 0;
+    if (resultCells != null)
+    {
+      foreach (var col in resultCells)
+        foreach (var cell in col.cells)
+          if (cell != null && cell.SymbolId == goldenCatSymbolId)
+            count++;
+    }
+    return count;
+  }
+
+  private bool HasGoldenScatterWin => CountTotalGoldenCats() >= 3 ||
+      (gameManager?.lastResult?.scatter != null && gameManager.lastResult.scatter.freeGamesTriggered);
+
   private IEnumerator PlayWinPopupOnly(double winAmount, System.Action onComplete)
   {
     if (winPresentationDelay > 0f)
@@ -960,7 +995,7 @@ public class SlotView : MonoBehaviour
 
     if (winPopup != null && winPopup.ShouldShow(winAmount, totalPay))
       winPopup.Show(winAmount, totalPay, null);
-    else if (winAmount > 0)
+    else if (winAmount > 0 && !HasGoldenScatterWin)
       AudioManager.Instance?.PlayNormalWin();
     else if (winPopup == null && !warnedNoWinPopup)
     {
@@ -1009,7 +1044,7 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
       while (!popupDone)
         yield return null;
     }
-    else if (totalWinAmount > 0)
+    else if (totalWinAmount > 0 && !HasGoldenScatterWin)
     {
       AudioManager.Instance?.PlayNormalWin();
     }
@@ -1166,6 +1201,7 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
     // In line order, so sibling draw order on the layer stays stable.
     foreach (var win in wins)
     {
+      if (stickyWilds.ContainsKey(win.cell)) continue;
       if (liftedWinCells.Add(win.cell)) win.cell.MoveToAnimationLayer(winAnimationLayer);
     }
   }
@@ -1186,6 +1222,7 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
 
     foreach (var (cell, symbolId) in wins)
     {
+      if (stickyWilds.ContainsKey(cell)) continue;
       if (winAnimById == null) BuildWinAnimLookup();
       if (!winAnimById.TryGetValue(symbolId, out var anim) || anim == null)
       {
@@ -1302,6 +1339,7 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
 
     HoldOverlayForFeature();
     ShowWinCells(wins);
+    AudioManager.Instance?.StopWin();
     AudioManager.Instance?.PlayScatterTrigger();
     yield return PlayWinPass(wins, loopSpine: true);
   }

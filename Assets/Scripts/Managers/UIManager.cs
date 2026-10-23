@@ -191,7 +191,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private float jackpotLevitateHeight = 10f;
     [SerializeField] private float jackpotLevitateDuration = 1.4f;
     [SerializeField] private float jackpotStaggerDelay = 0.15f;
-    private readonly Dictionary<Transform, Vector3> jackpotInitialLocalPositions = new Dictionary<Transform, Vector3>();
+    private readonly Dictionary<RectTransform, Vector2> jackpotInitialAnchoredPositions = new Dictionary<RectTransform, Vector2>();
     private readonly List<Tween> jackpotPortraitTweens = new List<Tween>();
     [Header("Expand-Shrink Controls")]
     [SerializeField] private Button expandButton;
@@ -1191,12 +1191,12 @@ public class UIManager : MonoBehaviour
         if (totalSpins > 0)
         {
             totalFreeSpinsAwarded = totalSpins;
-            SpriteNumberFormatter.Apply(totalFSText, totalFreeSpinsAwarded,
-                                        maxDecimals: 0, grouping: false);
+            SpriteNumberFormatter.Apply(totalFSText, totalFreeSpinsAwarded, maxDecimals: 0, grouping: false);
         }
 
-        int current = Mathf.Clamp(playedSpins + 1, 1, Mathf.Max(1, totalFreeSpinsAwarded));
-        SpriteNumberFormatter.Apply(currentFSText, current, maxDecimals: 0, grouping: false);
+        int remaining = Mathf.Clamp(totalFreeSpinsAwarded - playedSpins, 0, Mathf.Max(0, totalFreeSpinsAwarded));
+
+        SpriteNumberFormatter.Apply(currentFSText, remaining, maxDecimals: 0, grouping: false);
     }
 
     private void OnEnable()
@@ -1215,6 +1215,7 @@ public class UIManager : MonoBehaviour
         isPortraitLayout = mode == OrientationChange.OrientationMode.MobilePortrait;
         ApplyBackgroundVisibility();
         UpdateGameRulesDynamicTexts();
+        UpdateJackpotPortraitLevitation(mode);
     }
 
     /// <summary>
@@ -1552,7 +1553,7 @@ public class UIManager : MonoBehaviour
 
     private void UpdateJackpotPortraitLevitation(OrientationChange.OrientationMode mode)
     {
-        bool isPortrait = (mode == OrientationChange.OrientationMode.MobilePortrait || mode == OrientationChange.OrientationMode.DesktopPortrait);
+        bool isPortrait = (mode == OrientationChange.OrientationMode.MobilePortrait);
         if (isPortrait)
         {
             StartJackpotPortraitLevitation();
@@ -1563,14 +1564,14 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    private List<Transform> GetJackpotPortraitTransforms()
+    private List<RectTransform> GetJackpotPortraitTransforms()
     {
-        List<Transform> list = new List<Transform>();
+        List<RectTransform> list = new List<RectTransform>();
 
-        Transform grandTr = grandJackpotPortraitParent != null ? grandJackpotPortraitParent : (grandJackpotTextPortrait != null ? grandJackpotTextPortrait.transform.parent : null);
-        Transform majorTr = majorJackpotPortraitParent != null ? majorJackpotPortraitParent : (majorJackpotTextPortrait != null ? majorJackpotTextPortrait.transform.parent : null);
-        Transform minorTr = minorJackpotPortraitParent != null ? minorJackpotPortraitParent : (minorJackpotTextPortrait != null ? minorJackpotTextPortrait.transform.parent : null);
-        Transform miniTr = miniJackpotPortraitParent != null ? miniJackpotPortraitParent : (miniJackpotTextPortrait != null ? miniJackpotTextPortrait.transform.parent : null);
+        RectTransform grandTr = grandJackpotPortraitParent != null ? grandJackpotPortraitParent : (grandJackpotTextPortrait != null ? grandJackpotTextPortrait.rectTransform.parent as RectTransform : null);
+        RectTransform majorTr = majorJackpotPortraitParent != null ? majorJackpotPortraitParent : (majorJackpotTextPortrait != null ? majorJackpotTextPortrait.rectTransform.parent as RectTransform : null);
+        RectTransform minorTr = minorJackpotPortraitParent != null ? minorJackpotPortraitParent : (minorJackpotTextPortrait != null ? minorJackpotTextPortrait.rectTransform.parent as RectTransform : null);
+        RectTransform miniTr = miniJackpotPortraitParent != null ? miniJackpotPortraitParent : (miniJackpotTextPortrait != null ? miniJackpotTextPortrait.rectTransform.parent as RectTransform : null);
 
         if (grandTr != null) list.Add(grandTr);
         if (majorTr != null) list.Add(majorTr);
@@ -1586,26 +1587,26 @@ public class UIManager : MonoBehaviour
 
         StopJackpotPortraitLevitation();
 
-        List<Transform> portraitJackpots = GetJackpotPortraitTransforms();
+        List<RectTransform> portraitJackpots = GetJackpotPortraitTransforms();
         if (portraitJackpots.Count == 0) return;
 
         for (int i = 0; i < portraitJackpots.Count; i++)
         {
-            Transform tr = portraitJackpots[i];
-            if (tr == null) continue;
+            RectTransform rt = portraitJackpots[i];
+            if (rt == null) continue;
 
-            if (!jackpotInitialLocalPositions.ContainsKey(tr))
+            if (!jackpotInitialAnchoredPositions.ContainsKey(rt))
             {
-                jackpotInitialLocalPositions[tr] = tr.localPosition;
+                jackpotInitialAnchoredPositions[rt] = rt.anchoredPosition;
             }
 
-            Vector3 startPos = jackpotInitialLocalPositions[tr];
-            tr.localPosition = startPos;
+            Vector2 startPos = jackpotInitialAnchoredPositions[rt];
+            rt.anchoredPosition = startPos;
 
             float targetY = startPos.y + jackpotLevitateHeight;
             float delay = i * jackpotStaggerDelay;
 
-            Tween posTween = tr.DOLocalMoveY(targetY, jackpotLevitateDuration)
+            Tween posTween = rt.DOAnchorPosY(targetY, jackpotLevitateDuration)
                 .SetEase(Ease.InOutSine)
                 .SetLoops(-1, LoopType.Yoyo)
                 .SetDelay(delay);
@@ -1625,12 +1626,12 @@ public class UIManager : MonoBehaviour
         }
         jackpotPortraitTweens.Clear();
 
-        foreach (var kvp in jackpotInitialLocalPositions)
+        foreach (var kvp in jackpotInitialAnchoredPositions)
         {
             if (kvp.Key != null)
             {
                 DOTween.Kill(kvp.Key);
-                kvp.Key.localPosition = kvp.Value;
+                kvp.Key.anchoredPosition = kvp.Value;
             }
         }
     }
