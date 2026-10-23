@@ -127,6 +127,17 @@ public class UIManager : MonoBehaviour
     [Header("Game Rules Dynamic Texts")]
     [SerializeField] private TMP_Text totalLineCountText;
     [SerializeField] private TMP_Text totalLineCountTextPortrait;
+
+    [Header("Game Rules Symbol Paytable Texts")]
+    [SerializeField] private TMP_Text redCatPayText;
+    [SerializeField] private TMP_Text purpleCatPayText;
+    [SerializeField] private TMP_Text blueCatPayText;
+    [SerializeField] private TMP_Text greenCatPayText;
+    [SerializeField] private TMP_Text catPaintingPayText;
+    [SerializeField] private TMP_Text crownPayText;
+    [SerializeField] private TMP_Text pocketWatchPayText;
+    [SerializeField] private TMP_Text necklacePayText;
+    [SerializeField] private TMP_Text ringPayText;
     [Header("Free Spin Count Display - Game Screen")]
     [Tooltip("The FreeSpinDisplay panel. Shown for the whole round, from the trigger popup " +
              "closing to the outro finishing.\n\n" +
@@ -1073,6 +1084,7 @@ public class UIManager : MonoBehaviour
     private void ShowGameRulesPanel()
     {
         if (gameRulesPanel == null) return;
+        UpdateGameRulesDynamicTexts();
         gameRulesPanel.SetActive(true);
     }
 
@@ -1202,6 +1214,7 @@ public class UIManager : MonoBehaviour
     {
         isPortraitLayout = mode == OrientationChange.OrientationMode.MobilePortrait;
         ApplyBackgroundVisibility();
+        UpdateGameRulesDynamicTexts();
     }
 
     /// <summary>
@@ -1354,16 +1367,51 @@ public class UIManager : MonoBehaviour
     {
         if (values == null) return;
 
-        SetTMPText(grandJackpotText, grandJackpotTextPortrait, FormatJackpotValue(values.grandJackpot));
-        SetTMPText(majorJackpotText, majorJackpotTextPortrait, FormatJackpotValue(values.majorJackpot));
-        SetTMPText(minorJackpotText, minorJackpotTextPortrait, FormatJackpotValue(values.minorJackpot));
-        SetTMPText(miniJackpotText, miniJackpotTextPortrait, FormatJackpotValue(values.miniJackpot));
+        SetTMPText(grandJackpotText, grandJackpotTextPortrait, ConvertToSpriteFont(values.grandJackpot));
+        SetTMPText(majorJackpotText, majorJackpotTextPortrait, ConvertToSpriteFont(values.majorJackpot));
+        SetTMPText(minorJackpotText, minorJackpotTextPortrait, ConvertToSpriteFont(values.minorJackpot));
+        SetTMPText(miniJackpotText, miniJackpotTextPortrait, ConvertToSpriteFont(values.miniJackpot));
     }
-
-    private string FormatJackpotValue(string val)
+    private static string ConvertToSpriteFont(string val)
     {
-        if (string.IsNullOrEmpty(val)) return "$0.00";
-        return val.StartsWith("$") ? val : "$" + val;
+        if (string.IsNullOrEmpty(val)) val = "0.00";
+
+        if (val.Contains("<sprite=")) return val;
+
+        val = val.Trim();
+        if (val.StartsWith("$")) val = val.Substring(1).Trim();
+
+        string cleanVal = val.Replace(",", "");
+        string intPart = cleanVal;
+        string decPart = null;
+        int dotIndex = cleanVal.IndexOf('.');
+        if (dotIndex >= 0)
+        {
+            intPart = cleanVal.Substring(0, dotIndex);
+            decPart = cleanVal.Substring(dotIndex + 1);
+        }
+        double intVal;
+        if (double.TryParse(intPart, out intVal))
+        {
+            intPart = intVal.ToString("#,##0", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        string formatted = "$" + intPart + (decPart != null ? "." + decPart : string.Empty);
+
+        var sb = new System.Text.StringBuilder(formatted.Length * 12);
+        for (int i = 0; i < formatted.Length; i++)
+        {
+            char c = formatted[i];
+            if (c >= '0' && c <= '9')
+                sb.Append("<sprite=").Append(c - '0').Append('>');
+            else if (c == '.')
+                sb.Append("<sprite=10>");
+            else if (c == ',')
+                sb.Append("<sprite=11>");
+            else if (c == '$')
+                sb.Append("<sprite=12>");
+        }
+        return sb.ToString();
     }
     internal void UpdateBalanceDisplay(bool force = false)
     {
@@ -1432,20 +1480,50 @@ public class UIManager : MonoBehaviour
 
     private void UpdateGameRulesDynamicTexts()
     {
-        if (gameManager.gameConfig == null) return;
+        if (gameManager?.gameConfig?.symbols == null) return;
+
+        string payLineCount = gameManager.gameConfig.paylineCount.ToString();
 
         if (totalLineCountText != null && totalLineCountText.IsActive())
         {
-            totalLineCountText.text = gameManager.gameConfig.paylineCount.ToString();
+            totalLineCountText.text = payLineCount;
         }
         if (totalLineCountTextPortrait != null && totalLineCountTextPortrait.IsActive())
         {
-            totalLineCountTextPortrait.text = gameManager.gameConfig.paylineCount.ToString();
+            totalLineCountTextPortrait.text = payLineCount;
         }
 
-        if (gameManager.gameConfig.symbols == null) return;
+        UpdatePaytable(redCatPayText, 3);
+        UpdatePaytable(purpleCatPayText, 4);
+        UpdatePaytable(blueCatPayText, 5);
+        UpdatePaytable(greenCatPayText, 6);
+        UpdatePaytable(catPaintingPayText, 7);
+        UpdatePaytable(crownPayText, 8);
+        UpdatePaytable(pocketWatchPayText, 9);
+        UpdatePaytable(necklacePayText, 10);
+        UpdatePaytable(ringPayText, 11);
+    }
 
-        double bet = gameManager.currentBetAmount;
+    private void UpdatePaytable(TMP_Text text, int symbolId)
+    {
+        if (text == null) return;
+        var symbol = gameManager.gameConfig.symbols.Find(s => s.id == symbolId);
+        if (symbol?.multipliers == null) return;
+
+        double totalBet = gameManager != null ? gameManager.GetTotalPay() : 1.0;
+        if (totalBet <= 0) totalBet = 1.0;
+
+        string result = "";
+        for (int i = 0; i < symbol.multipliers.Count; i++)
+        {
+            int matchCount = (symbol.matchCounts != null && i < symbol.matchCounts.Count)
+                ? symbol.matchCounts[i]
+                : 5 - i;
+
+            double payout = symbol.multipliers[i] * totalBet;
+            result += $"{matchCount}    {FormatAmount(payout)}\n";
+        }
+        text.text = result.TrimEnd();
     }
 
     #endregion

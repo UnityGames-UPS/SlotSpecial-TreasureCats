@@ -84,11 +84,9 @@ internal class FreeSpinPresenter : MonoBehaviour
 
   [SerializeField] private float congratsHoldDuration = 3f;
 
-  [Tooltip("Coin shower played under the congratulations panel.")]
-  [SerializeField] private CoinTossFountain congratsFountain;
 
-  [Header("Motorboat outro")]
-  [Tooltip("The piggy-on-a-motorboat animation that crosses the screen once the " +
+  [Header("Cat car outro")]
+  [Tooltip("The cat car animation that crosses the screen once the " +
            "congratulations panel has closed. Drawn above all other UI.")]
   // [SerializeField] private ImageAnimation motorboatAnim;
   [SerializeField] private GameObject catCarRoot;
@@ -750,10 +748,6 @@ internal class FreeSpinPresenter : MonoBehaviour
     sequence = null;
     StopAllCoroutines();
     ResetIntroPopups();
-
-    congratsFountain?.StopImmediate();
-    CoinAnimator.Stop(congratsBgAnim);
-    // CoinAnimator.Stop(motorboatAnim);
 
     if (congratsSpine != null && congratsSpine.IsValid)
     {

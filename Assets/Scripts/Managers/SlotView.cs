@@ -319,8 +319,8 @@ public class SlotView : MonoBehaviour
       return;
     }
 
-    if (winDarkenOverlay != null && winDarkenOverlay.transform.parent == winAnimationLayer.parent)
-      winDarkenOverlay.transform.SetAsLastSibling();
+    // if (winDarkenOverlay != null && winDarkenOverlay.transform.parent == winAnimationLayer.parent)
+    //   winDarkenOverlay.transform.SetAsLastSibling();
 
     winAnimationLayer.SetAsLastSibling();
   }
@@ -1014,38 +1014,36 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
       AudioManager.Instance?.PlayNormalWin();
     }
 
-    onComplete?.Invoke();
-
     // Autoplay and free spins never see the per-line breakdown; the next spin follows.
     if (gameManager != null && (gameManager.isAutoPlaying || gameManager.isInFreeSpins))
     {
+      if (gameManager.currentSpinSpeed != SpinSpeed.Normal && allWinPositions.Count > 0 && !showPopup)
+      {
+        StartCoroutine(ShowAndPlayWin(allWinPositions));
+        yield return new WaitForSeconds(1.5f);
+      }
+
       LowerAllWinCells();
       ReleaseWinOverlay();
       winAnimationCoroutine = null;
+      onComplete?.Invoke();
       yield break;
     }
 
-    
-    foreach (var winLine in winLines)
+    onComplete?.Invoke();
+
+    float delay = phase2LineDelay > 0f ? phase2LineDelay : 1.2f;
+    while (true)
     {
+      foreach (var winLine in winLines)
+      {
         if (winLine.positions == null || winLine.positions.Count == 0) continue;
         DrawSingleWinLine(winLine);
         ShowLinePayoutText(winLine);
 
         yield return StartCoroutine(ShowAndPlayWin(winLine.positions));
-        yield return new WaitForSeconds(phase2LineDelay);
-    }
-
-    // ---- STOP & DESTROY WIN LINE OBJECTS ----
-    HideAllWinLineTexts();
-    payCalculator?.ResetLines();
-    yield return new WaitForSeconds(phaseGapDelay);
-
-    // ---- STAGE 3: idle loop, all winners together, until the next spin ----------------
-    while (true)
-    {
-      yield return StartCoroutine(ShowAndPlayWin(allWinPositions));
-      yield return new WaitForSeconds(phaseGapDelay);
+        yield return new WaitForSeconds(delay);
+      }
     }
 }
 
@@ -1417,10 +1415,6 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
     var cell = ResultCell(col, row);
     if (cell == null) return;
 
-    // A closed locker is deliberately inert. PopulateResultMatrix writes the REVEALED id
-    // into the cell while the locker still covers it, so answering a tap here would show
-    // the player what is under the locker before it opens.
-    if (cell.IsLockerVisible) return;
 
     // The CELL, not currentDisplayMatrix, is what the player is looking at: the matrix
     // holds the server result and stays all-zeros until the first one lands, while the

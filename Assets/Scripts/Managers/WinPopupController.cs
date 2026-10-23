@@ -99,12 +99,6 @@ internal class WinPopupController : MonoBehaviour
              "point at the SAME component — it is a property of the popup, not of the tier.")]
     public PopupPulseGroup pulseGroup;
 
-    [Header("Fountains — either, both, or neither")]
-    [Tooltip("Coins tossed up from the bottom bar. The Normal tier's shower.")]
-    public CoinTossFountain coinFountain;
-
-    [Tooltip("Diamonds sprayed sideways from behind the panel. The big tiers' shower.")]
-    public DiamondFountain diamondFountain;
   }
 
   [Header("Fade — the CanvasGroup on WinPanel")]
@@ -476,9 +470,6 @@ internal class WinPopupController : MonoBehaviour
 
     if (skipButton != null) skipButton.gameObject.SetActive(false);
 
-    // Stopped here rather than in ResetPresentation so the fountain's own fade overlaps the
-    // panel's, instead of the diamonds cutting out the instant the panel has gone.
-    StopFountains(tier, instant: false);
 
     float exitDuration = fadeOutDuration;
     if (tier.spineGraphic != null && tier.spineGraphic.IsValid && !string.IsNullOrEmpty(tier.endAnimation))
@@ -541,8 +532,6 @@ internal class WinPopupController : MonoBehaviour
                      "ImageAnimation itself.", this);
       return;
     }
-
-    CoinAnimator.Play(tier.bgAnim, frames, tier.bgAnimSpeed);
   }
 
   /// <summary>
@@ -574,44 +563,6 @@ internal class WinPopupController : MonoBehaviour
     return decimals;
   }
 
-  /// <summary>
-  /// Start whichever showers this tier owns. Both slots are optional and independent — a tier
-  /// may have coins, diamonds, both, or neither.
-  /// </summary>
-  // private static void PlayFountains(WinTier tier)
-  // {
-  //   if (tier == null) return;
-
-  //   tier.coinFountain?.Play();
-  //   tier.diamondFountain?.Play();
-  // }
-
-  /// <summary>
-  /// Stop this tier's showers. <paramref name="instant"/> cuts them dead this frame; without
-  /// it they stop spawning and fade, letting whatever is already in the air finish its
-  /// flight.
-  ///
-  /// The IsPlaying guard on the fading path matters because a normal close calls this twice
-  /// — once as the panel starts fading, again from ResetPresentation. Without it the second
-  /// call would kill the first fade partway and restart a full-length one, leaving the
-  /// shower visible after the panel it decorates has gone. The instant path is unguarded on
-  /// purpose: it is what has to kill that fade.
-  /// </summary>
-  private static void StopFountains(WinTier tier, bool instant)
-  {
-    if (tier == null) return;
-
-    if (instant)
-    {
-      tier.coinFountain?.StopImmediate();
-      tier.diamondFountain?.StopImmediate();
-      return;
-    }
-
-    if (tier.coinFountain != null && tier.coinFountain.IsPlaying) tier.coinFountain.Stop();
-    if (tier.diamondFountain != null && tier.diamondFountain.IsPlaying)
-      tier.diamondFountain.Stop();
-  }
 
   private void ResetPresentation(bool instant, bool restoreControls)
   {
@@ -625,24 +576,11 @@ internal class WinPopupController : MonoBehaviour
         activeTier.spineGraphic.Skeleton?.SetToSetupPose();
       }
 
-      CoinAnimator.Stop(activeTier.bgAnim);
 
       // Must happen on EVERY exit, not only on cancel: the pulse leaves the popup's children
       // at whatever scale the yoyo was passing through, and that scale would still be there
       // the next time the popup opens.
       activeTier.pulseGroup?.Stop(instant);
-
-      // A normal close has already stopped these at the top of the fade out. This catches
-      // the cancel path, and is a no-op when they are stopped twice.
-      StopFountains(activeTier, instant);
-
-      // The diamond layer is a CHILD of the popup root, so the SetActive(false) two lines
-      // below would strand every diamond still in the air: deactivation kills the flight
-      // without firing the pool callback, and the item never leaves ItemsInUse. Recycle
-      // unconditionally — by this point the panel has finished fading, so nothing visible is
-      // being cut. The coin fountain needs no equivalent; its layer is a sibling of the
-      // popup, not a child, and it is left to finish its own fade.
-      activeTier.diamondFountain?.StopImmediate();
 
       SpriteNumberFormatter.Clear(activeTier.amountText);
       if (activeTier.popupRoot != null) activeTier.popupRoot.SetActive(false);

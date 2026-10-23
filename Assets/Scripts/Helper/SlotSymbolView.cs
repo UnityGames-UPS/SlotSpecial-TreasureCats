@@ -145,20 +145,9 @@ public class SlotSymbolView : MonoBehaviour
     homeParent = transform.parent;
     homeSiblingIndex = transform.GetSiblingIndex();
 
-    if (coinOverlay != null)
-    {
-      if (coinImage == null) coinImage = coinOverlay.GetComponent<Image>();
+    if (winLineText == null)
+      winLineText = transform.Find("WinLineText")?.GetComponent<TMPro.TMP_Text>();
 
-      // Captured before anything can reparent the coin, so a flight always has an exact
-      // slot to come back to — including its designed offset within the cell.
-      coinHomeParent = coinOverlay.parent;
-      coinHomeSiblingIndex = coinOverlay.GetSiblingIndex();
-      coinHomeAnchoredPosition = coinOverlay.anchoredPosition;
-
-      // The prefab should ship it inactive; make sure, so a stray enabled coin cannot sit on
-      // the grid through a spin that reveals none.
-      coinOverlay.gameObject.SetActive(false);
-    }
   }
 
   #region Win animation layer
@@ -430,213 +419,6 @@ public class SlotSymbolView : MonoBehaviour
 
   #endregion
 
-  #region Mystery locker
-
-  // The locker is a THIRD display child, independent of the sprite/Spine mode split above:
-  // it simply covers whatever the cell is showing. Because the server's matrix already
-  // carries the revealed symbol, the cell underneath is correct before the reveal ever
-  // plays — the locker only has to hide it, open, and switch itself off.
-  //
-  // It uses the same stage-then-start idiom as the win animations so every locker in the
-  // grid begins on the SAME frame.
-
-  private bool lockerStaged;
-
-  /// <summary>True while this cell is covered by its locker.</summary>
-  internal bool IsLockerVisible => lockerImage != null && lockerImage.gameObject.activeSelf;
-
-  /// <summary>
-  /// Cover the cell with its closed locker. Returns false when the cell has no locker child.
-  /// </summary>
-  internal bool ShowLocker(Sprite closedSprite)
-  {
-    if (lockerImage == null) return false;
-
-    if (!lockerImage.gameObject.activeSelf) lockerImage.gameObject.SetActive(true);
-
-    // Activating the object may have queued a StartAnimation through ImageAnimation's
-    // StartonEnable flag. Cancel it here rather than trusting the Inspector — an unnoticed
-    // tick would make the locker play its reveal the moment it appears, mid-spin.
-    if (lockerAnimation != null)
-    {
-      lockerAnimation.CancelAllPending();
-      lockerAnimation.onLoopComplete = null;
-      lockerAnimation.doLoopAnimation = false;
-    }
-
-    if (closedSprite != null) lockerImage.sprite = closedSprite;
-
-    Color c = lockerImage.color;
-    lockerImage.color = new Color(c.r, c.g, c.b, 1f);
-    lockerImage.enabled = true;
-
-    lockerStaged = false;
-    return true;
-  }
-
-  /// <summary>
-  /// Stage the locker's open-and-exit sequence. Nothing plays until
-  /// <see cref="StartStagedLocker"/>. <paramref name="onFinished"/> fires once, at the end
-  /// of the single pass. Returns false when there is no locker or no frames.
-  /// </summary>
-  internal bool StageLockerReveal(List<Sprite> frames, float animationSpeed, System.Action onFinished)
-  {
-    if (lockerAnimation == null || lockerImage == null) return false;
-    if (frames == null || frames.Count == 0) return false;
-
-    lockerAnimation.CancelAllPending();
-    lockerAnimation.textureArray = frames;
-
-    // One pass only: ImageAnimation raises onLoopComplete at the end of the run and parks
-    // itself instead of re-scheduling.
-    lockerAnimation.doLoopAnimation = false;
-
-    if (animationSpeed > 0f) lockerAnimation.AnimationSpeed = animationSpeed;
-    lockerAnimation.onLoopComplete = _ => onFinished?.Invoke();
-
-    if (!lockerImage.gameObject.activeSelf) lockerImage.gameObject.SetActive(true);
-
-    lockerStaged = true;
-    return true;
-  }
-
-  /// <summary>Start the staged locker reveal. Called on every locker in the same frame.</summary>
-  internal void StartStagedLocker()
-  {
-    if (!lockerStaged || lockerAnimation == null) return;
-
-    lockerStaged = false;
-    lockerAnimation.StartAnimation();
-  }
-
-  /// <summary>
-  /// Take the locker down. Safe on a cell that never had one, and safe to call from inside
-  /// the reveal's own completion callback.
-  /// </summary>
-  internal void HideLocker()
-  {
-    lockerStaged = false;
-
-    if (lockerAnimation != null)
-    {
-      lockerAnimation.onLoopComplete = null;
-
-      // Same trap as StopWinAnimation: AnimationProcess re-Invokes itself after raising
-      // onLoopComplete when doLoopAnimation is set, so StopAnimation's CancelInvoke would be
-      // undone if we stop from inside that callback. Clear the flag first.
-      lockerAnimation.doLoopAnimation = false;
-      lockerAnimation.StopAnimation();
-      lockerAnimation.CancelAllPending();
-    }
-
-    if (lockerImage != null && lockerImage.gameObject.activeSelf)
-      lockerImage.gameObject.SetActive(false);
-  }
-
-  #endregion
-
-  #region Coin overlay
-
-  // A coin stamped on this cell by payload.coinOverlays. Unlike the win animation, which
-  // reparents the WHOLE cell, only the coin child leaves — the symbol underneath stays put
-  // and keeps playing its win animation while the coin flies off to its pig.
-  //
-  // The child is cached rather than instantiated: a cell can only ever reveal one coin per
-  // spin, so there is nothing to pool. It goes back home disabled when the flight ends.
-  //
-  // The coin's look is a looping PNG sequence, one per coin type, supplied by
-  // PigMeterController rather than baked into the prefab — nine sequences share this one
-  // child, so the cell cannot know which it will show until the result arrives.
-
-  private Transform coinHomeParent;
-  private int coinHomeSiblingIndex;
-  private Vector2 coinHomeAnchoredPosition;
-
-  /// <summary>The coin's RectTransform, or null when this cell has no coin child wired.</summary>
-  internal RectTransform CoinRect => coinOverlay;
-
-  /// <summary>
-  /// Reveal the coin on this cell, sitting STILL on frame 0 of <paramref name="frames"/> —
-  /// its idle pose. It does not animate until <see cref="StartCoinAnimation"/> launches it.
-  /// Returns false when the cell has no coin child, which is a prefab wiring bug rather than
-  /// a normal state.
-  /// </summary>
-  internal bool ShowCoin(List<Sprite> frames)
-  {
-    if (coinOverlay == null) return false;
-
-    // Any previous flight must be undone before the coin is shown again, or it appears
-    // already shrunk or still parented to the flight layer.
-    ReturnCoinHome();
-
-    coinOverlay.localScale = Vector3.one;
-
-    // Activate BEFORE touching the animation: ImageAnimation's OnDisable stops it, so work
-    // done on a still-inactive object would be undone the moment it ran.
-    coinOverlay.gameObject.SetActive(true);
-
-    // Not fatal if this fails — the coin is on screen either way. Worth saying so, because a
-    // coin stuck on the wrong sprite looks like a missing asset.
-    if (!CoinAnimator.ShowIdle(coinAnimation, coinImage, frames))
-    {
-      Debug.LogError("[SlotSymbolView] Coin revealed with no frames — check the coin's Image " +
-                     "and ImageAnimation wiring on the SlotIcon prefab, and the coinFrames " +
-                     "list for this coin type on PigMeterController.", this);
-    }
-
-    return true;
-  }
-
-  /// <summary>
-  /// Set the coin spinning for its flight. Called as it leaves the cell, so a coin sitting on
-  /// the grid waiting its turn in the stagger stays on its idle pose.
-  /// </summary>
-  internal void StartCoinAnimation(List<Sprite> frames, float animationSpeed)
-  {
-    CoinAnimator.Play(coinAnimation, frames, animationSpeed);
-  }
-
-  /// <summary>Stop the coin spinning and rest it on its idle pose. Used the moment it lands.</summary>
-  internal void StopCoinAnimation()
-  {
-    CoinAnimator.Stop(coinAnimation);
-  }
-
-  /// <summary>
-  /// Lift the coin onto <paramref name="layer"/> so it draws above the reels for its flight.
-  /// World position is preserved, so it does not appear to move.
-  /// </summary>
-  internal void DetachCoin(Transform layer)
-  {
-    if (coinOverlay == null || layer == null || coinOverlay.parent == layer) return;
-    coinOverlay.SetParent(layer, worldPositionStays: true);
-  }
-
-  /// <summary>
-  /// Put the coin back where it came from, hidden and at full scale. Idempotent and safe on
-  /// a coin that never flew, which is what makes a spin interrupting mid-flight recover.
-  /// </summary>
-  internal void ReturnCoinHome()
-  {
-    if (coinOverlay == null) return;
-
-    coinOverlay.DOKill();
-    CoinAnimator.Stop(coinAnimation);
-
-    if (coinHomeParent != null && coinOverlay.parent != coinHomeParent)
-    {
-      coinOverlay.SetParent(coinHomeParent, worldPositionStays: false);
-      coinOverlay.SetSiblingIndex(coinHomeSiblingIndex);
-    }
-
-    coinOverlay.anchoredPosition = coinHomeAnchoredPosition;
-    coinOverlay.localScale = Vector3.one;
-
-    if (coinOverlay.gameObject.activeSelf) coinOverlay.gameObject.SetActive(false);
-  }
-
-  #endregion
-
   /// <summary>
   /// Stop any win animation and return the cell to its resting look, without changing
   /// which display mode it is in.
@@ -690,10 +472,6 @@ public class SlotSymbolView : MonoBehaviour
   internal void ResetVisualState()
   {
     StopWinAnimation(0f);
-    // A spin starting mid-reveal must not leave a locker covering the cell, or a coin
-    // stranded on the flight layer, for the whole next round.
-    HideLocker();
-    ReturnCoinHome();
     ReturnHome();
     transform.DOKill();
     transform.localScale = Vector3.one;
@@ -708,28 +486,27 @@ public class SlotSymbolView : MonoBehaviour
 
   internal void ShowWinText(double amount)
   {
-    if (winLineText == null) return;
+    if (winLineText == null)
+    {
+      winLineText = transform.Find("WinLineText")?.GetComponent<TMPro.TMP_Text>();
+      if (winLineText == null) return;
+    }
 
     // tint: true is required here and nowhere else in the meters — this label is FADED in and
     // out below, and DOFade only writes the text colour. An untinted sprite glyph carries its
     // own colour and would sit at full opacity through the whole fade.
     SpriteNumberFormatter.Apply(winLineText, amount, maxDecimals: 3, grouping: false, tint: true);
     winLineText.DOKill();
+    winLineText.transform.DOKill();
 
-    // Fade up from wherever the label currently is, not from zero. With a single winning
-    // line the same label is hidden and re-shown every pass, and the fade-out is still
-    // running when the next pass asks for it — resetting to 0 there snaps it dark before
-    // fading in again. Only a label that is genuinely off starts from transparent.
     if (!winLineText.gameObject.activeSelf)
     {
       winLineText.gameObject.SetActive(true);
       SetWinTextAlpha(0f);
     }
-    else if (Mathf.Approximately(winLineText.color.a, 1f))
-    {
-      return; // already fully up — leave it alone rather than re-running the tween
-    }
 
+    winLineText.transform.localScale = Vector3.one * 0.75f;
+    winLineText.transform.DOScale(1f, 0.25f).SetEase(Ease.OutBack);
     winLineText.DOFade(1f, winTextFadeDuration);
   }
 
@@ -745,10 +522,12 @@ public class SlotSymbolView : MonoBehaviour
     float duration = fadeDuration >= 0f ? fadeDuration : winTextFadeDuration;
 
     winLineText.DOKill();
+    winLineText.transform.DOKill();
     if (duration <= 0f || !winLineText.gameObject.activeSelf)
     {
       winLineText.gameObject.SetActive(false);
       SetWinTextAlpha(1f);
+      winLineText.transform.localScale = Vector3.one;
       return;
     }
 
@@ -758,6 +537,7 @@ public class SlotSymbolView : MonoBehaviour
       // Left opaque so anything that switches the object on without going through
       // ShowWinText still gets a visible label.
       SetWinTextAlpha(1f);
+      winLineText.transform.localScale = Vector3.one;
     });
   }
 

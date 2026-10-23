@@ -355,6 +355,11 @@ public class ServerLineWin
   /// <summary>Cash won on this line (payout x bet).</summary>
   public double winAmount;
 
+  // Backend sends winInCash and winInCredits in spinResult payload:
+  public double winInCash;
+  public double winInCredits;
+  public double basePayout;
+
   /// <summary>
   /// Winning cells as "row,col" strings, ordered left-to-right from the leftmost reel:
   /// [ "0,0", "0,1", "0,2" ]. NOTE the row-first order — the client's resultMatrix is
@@ -1003,7 +1008,11 @@ public static class InitDataConverter
               lineId = serverWin.lineIndex,
               symbolId = serverWin.symbolId,
               positions = positions,
-              winAmount = serverWin.winAmount
+              // Read line win from winInCash (preferred), winAmount, winInCredits, or payout:
+              winAmount = serverWin.winInCash > 0 ? serverWin.winInCash
+                        : serverWin.winAmount > 0 ? serverWin.winAmount
+                        : serverWin.winInCredits > 0 ? serverWin.winInCredits
+                        : serverWin.payout
           });
       }
 

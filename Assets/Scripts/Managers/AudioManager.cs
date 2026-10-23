@@ -26,7 +26,6 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private AudioClip clipBigWins;
     [SerializeField] private AudioClip clipCongratulations;
     [SerializeField] private AudioClip clipFreeSpinRewarded;
-    [SerializeField] private AudioClip clipMeterAdd;
     [SerializeField] private AudioClip clipJackpotMultiplierIncrease;
     [SerializeField] private AudioClip clipMysteryReveal;
     [SerializeField] private AudioClip clipReelSpinning;
@@ -292,7 +291,6 @@ public class AudioManager : MonoBehaviour
 
     internal void PlayCongratulations()           => PlaySfx(clipCongratulations);
     internal void PlayFreeSpinRewarded()          => PlaySfx(clipFreeSpinRewarded);
-    internal void PlayMeterAdd()                  => PlaySfx(clipMeterAdd);
     internal void PlayJackpotMultiplierIncrease() => PlaySfx(clipJackpotMultiplierIncrease);
     internal void PlayMysteryReveal()             => PlaySfx(clipMysteryReveal);
     internal void PlayReelStop()                  => PlaySfx(clipReelStop, reelStopFadeInDuration, reelStopStartOffset);
