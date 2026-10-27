@@ -113,6 +113,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private RectTransform gameRulesPanelRect;
     [SerializeField] private Button gameRulesOpenButton;
     [SerializeField] private Button gameRulesBackButton;
+    private ScrollRect gameRulesScrollRect;
     [Header("Game Rules Panel - Portrait")]
     [SerializeField] private Button gameRulesOpenButtonPortrait;
 
@@ -121,6 +122,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] private RectTransform guidePanelRect;
     [SerializeField] private Button guideOpenButton;
     [SerializeField] private Button guideBackButton;
+    private ScrollRect guidePanelScrollRect;
     [Header("Guide Panel - Portrait")]
     [SerializeField] private Button guideOpenButtonPortrait;
 
@@ -505,6 +507,8 @@ public class UIManager : MonoBehaviour
         if (gameRulesOpenButtonPortrait) gameRulesOpenButtonPortrait.onClick.AddListener(OpenGameRulesPanel);
 
         if (gameRulesBackButton) gameRulesBackButton.onClick.AddListener(() => { AudioManager.Instance?.PlayPopupClose(); CloseGameRulesPanel(); });
+        if (gameRulesPanel != null)
+            gameRulesScrollRect = gameRulesPanel.GetComponentInChildren<ScrollRect>(true);
     }
 
     private void SetupGuidePanel()
@@ -513,6 +517,8 @@ public class UIManager : MonoBehaviour
         if (guideOpenButtonPortrait) guideOpenButtonPortrait.onClick.AddListener(OpenGuidePanel);
 
         if (guideBackButton) guideBackButton.onClick.AddListener(() => { AudioManager.Instance?.PlayPopupClose(); CloseGuidePanel(); });
+        if (guidePanel != null)
+            guidePanelScrollRect = guidePanel.GetComponentInChildren<ScrollRect>(true);
     }
 
     #endregion
@@ -1091,6 +1097,11 @@ public class UIManager : MonoBehaviour
     private void CloseGameRulesPanel()
     {
         if (gameRulesPanel == null) return;
+        if (gameRulesScrollRect != null)
+        {
+            gameRulesScrollRect.StopMovement();
+            gameRulesScrollRect.verticalNormalizedPosition = 1f;
+        }
         gameRulesPanel.SetActive(false);
     }
 
@@ -1117,6 +1128,11 @@ public class UIManager : MonoBehaviour
     private void CloseGuidePanel()
     {
         if (guidePanel == null) return;
+        if (guidePanelScrollRect != null)
+        {
+            guidePanelScrollRect.StopMovement();
+            guidePanelScrollRect.verticalNormalizedPosition = 1f;
+        }
         guidePanel.SetActive(false);
     }
 
