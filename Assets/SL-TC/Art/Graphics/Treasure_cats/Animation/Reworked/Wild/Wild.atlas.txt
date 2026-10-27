@@ -1,0 +1,130 @@
+Wild.png
+size:1577,442
+filter:Linear,Linear
+pma:true
+BG
+bounds:2,60,380,264
+rotate:90
+Comp 1/Comp 1_00000
+bounds:1366,5,84,77
+offsets:282,59,650,343
+rotate:90
+Comp 1/Comp 1_00001
+bounds:1366,5,84,77
+offsets:282,59,650,343
+rotate:90
+Comp 1/Comp 1_00002
+bounds:1446,8,94,93
+offsets:274,53,650,343
+rotate:90
+Comp 1/Comp 1_00003
+bounds:1446,8,94,93
+offsets:274,53,650,343
+rotate:90
+Comp 1/Comp 1_00004
+bounds:1446,8,94,93
+offsets:274,53,650,343
+rotate:90
+Comp 1/Comp 1_00005
+bounds:268,2,105,110
+offsets:266,47,650,343
+Comp 1/Comp 1_00006
+bounds:268,2,105,110
+offsets:266,47,650,343
+Comp 1/Comp 1_00007
+bounds:1446,104,116,126
+offsets:258,43,650,343
+rotate:90
+Comp 1/Comp 1_00008
+bounds:1446,104,116,126
+offsets:258,43,650,343
+rotate:90
+Comp 1/Comp 1_00009
+bounds:523,4,127,143
+offsets:250,39,650,343
+Comp 1/Comp 1_00010
+bounds:523,4,127,143
+offsets:250,39,650,343
+Comp 1/Comp 1_00011
+bounds:523,4,127,143
+offsets:250,39,650,343
+Comp 1/Comp 1_00012
+bounds:847,5,138,159
+offsets:242,36,650,343
+Comp 1/Comp 1_00013
+bounds:847,5,138,159
+offsets:242,36,650,343
+Comp 1/Comp 1_00014
+bounds:987,4,149,176
+offsets:234,33,650,343
+Comp 1/Comp 1_00015
+bounds:987,4,149,176
+offsets:234,33,650,343
+Comp 1/Comp 1_00016
+bounds:652,4,160,193
+offsets:225,32,650,343
+rotate:90
+Comp 1/Comp 1_00017
+bounds:652,4,160,193
+offsets:225,32,650,343
+rotate:90
+Comp 1/Comp 1_00018
+bounds:1265,231,171,209
+offsets:217,32,650,343
+Comp 1/Comp 1_00019
+bounds:1265,231,171,209
+offsets:217,32,650,343
+Comp 1/Comp 1_00020
+bounds:1265,231,171,209
+offsets:217,32,650,343
+Comp 1/Comp 1_00021
+bounds:1138,15,182,226
+offsets:209,32,650,343
+rotate:90
+Comp 1/Comp 1_00022
+bounds:1138,15,182,226
+offsets:209,32,650,343
+rotate:90
+Comp 1/Comp 1_00023
+bounds:1070,199,193,241
+offsets:201,34,650,343
+Comp 1/Comp 1_00024
+bounds:1070,199,193,241
+offsets:201,34,650,343
+Comp 1/Comp 1_00025
+bounds:864,182,204,258
+offsets:193,36,650,343
+Comp 1/Comp 1_00026
+bounds:864,182,204,258
+offsets:193,36,650,343
+Comp 1/Comp 1_00027
+bounds:864,182,204,258
+offsets:193,36,650,343
+Comp 1/Comp 1_00028
+bounds:648,166,214,274
+offsets:185,39,650,343
+Comp 1/Comp 1_00029
+bounds:648,166,214,274
+offsets:185,39,650,343
+Comp 1/Comp 1_00030
+bounds:421,149,225,291
+offsets:177,43,650,343
+Shadow
+bounds:268,114,326,151
+offsets:1,1,328,153
+rotate:90
+d
+bounds:1438,222,93,133
+offsets:15,24,109,158
+rotate:90
+i
+bounds:1366,91,78,129
+offsets:6,21,97,151
+l
+bounds:375,11,101,146
+offsets:14,15,131,162
+rotate:90
+w
+bounds:1438,317,123,137
+offsets:5,13,146,168
+rotate:90

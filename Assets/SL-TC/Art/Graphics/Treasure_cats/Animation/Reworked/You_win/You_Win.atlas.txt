@@ -1,0 +1,186 @@
+You_Win.png
+size:2043,1968
+filter:Linear,Linear
+pma:true
+Button
+bounds:2,1649,456,204
+offsets:1,1,458,206
+Collect
+bounds:2,1880,328,86
+offsets:2,2,332,90
+Congrats
+bounds:850,1777,1127,189
+offsets:4,5,1135,198
+Partical_fx/Comp 1_00000
+bounds:453,1042,455,248
+offsets:16,13,480,270
+Partical_fx/Comp 1_00004
+bounds:2,1405,453,242
+offsets:18,7,480,270
+Partical_fx/Comp 1_00006
+bounds:902,785,453,251
+offsets:18,0,480,270
+Partical_fx/Comp 1_00008
+bounds:457,1292,452,246
+offsets:19,0,480,270
+Partical_fx/Comp 1_00009
+bounds:438,534,451,255
+offsets:20,3,480,270
+Partical_fx/Comp 1_00012
+bounds:1338,1538,451,237
+offsets:21,0,480,270
+Partical_fx/Comp 1_00013
+bounds:450,791,450,249
+offsets:22,0,480,270
+Partical_fx/Comp 1_00014
+bounds:438,274,450,258
+offsets:22,0,480,270
+Partical_fx/Comp 1_00015
+bounds:889,4,449,260
+offsets:23,0,480,270
+Partical_fx/Comp 1_00016
+bounds:438,13,449,259
+offsets:23,0,480,270
+Partical_fx/Comp 1_00018
+bounds:887,1540,449,235
+offsets:23,5,480,270
+Partical_fx/Comp 1_00019
+bounds:2,902,446,252
+offsets:24,0,480,270
+Partical_fx/Comp 1_00020
+bounds:1360,1273,425,263
+offsets:24,0,480,270
+Partical_fx/Comp 1_00021
+bounds:460,1547,425,228
+offsets:24,7,480,270
+Partical_fx/Comp 1_00022
+bounds:911,1290,447,246
+offsets:24,0,480,270
+Partical_fx/Comp 1_00023
+bounds:891,526,452,257
+offsets:19,0,480,270
+Partical_fx/Comp 1_00031
+bounds:1360,1024,462,247
+offsets:11,0,480,270
+Partical_fx/Comp 1_00032
+bounds:1357,770,463,252
+offsets:10,2,480,270
+Partical_fx/Comp 1_00034
+bounds:1340,2,466,256
+offsets:8,2,480,270
+Partical_fx/Comp 1_00041
+bounds:1345,515,473,253
+offsets:2,0,480,270
+Partical_fx/Comp 1_00043
+bounds:1342,260,475,253
+offsets:0,0,480,270
+Partical_fx/Comp 1_00044
+bounds:2,636,434,264
+offsets:21,0,480,270
+Partical_fx/Comp 1_00045
+bounds:2,364,434,270
+offsets:21,0,480,270
+Partical_fx/Comp 1_00046
+bounds:2,92,434,270
+offsets:21,0,480,270
+Partical_fx/Comp 1_00047
+bounds:1791,1342,433,250
+offsets:21,1,480,270
+rotate:90
+Partical_fx/Comp 1_00048
+bounds:910,1038,448,250
+offsets:21,0,480,270
+Partical_fx/Comp 1_00049
+bounds:2,1156,449,247
+offsets:21,0,480,270
+Partical_fx/Comp 1_00050
+bounds:890,266,450,258
+offsets:21,0,480,270
+You_Win
+bounds:332,1855,516,111
+offsets:2,2,520,115
+
+You_Win_2.png
+size:1875,1955
+filter:Linear,Linear
+pma:true
+Baar
+bounds:2,2,1767,351
+offsets:1,1,1769,353
+Partical_fx/Comp 1_00001
+bounds:455,899,455,266
+offsets:16,0,480,270
+Partical_fx/Comp 1_00002
+bounds:2,1170,454,264
+offsets:17,0,480,270
+Partical_fx/Comp 1_00003
+bounds:917,1432,454,261
+offsets:17,0,480,270
+Partical_fx/Comp 1_00005
+bounds:462,1434,453,260
+offsets:18,0,480,270
+Partical_fx/Comp 1_00007
+bounds:1373,1431,452,262
+offsets:19,0,480,270
+Partical_fx/Comp 1_00010
+bounds:2,631,451,269
+offsets:20,0,480,270
+Partical_fx/Comp 1_00011
+bounds:2,902,451,266
+offsets:21,0,480,270
+Partical_fx/Comp 1_00017
+bounds:912,898,449,266
+offsets:23,4,480,270
+Partical_fx/Comp 1_00024
+bounds:947,1695,454,258
+offsets:18,3,480,270
+Partical_fx/Comp 1_00025
+bounds:458,1167,455,265
+offsets:17,0,480,270
+Partical_fx/Comp 1_00026
+bounds:472,355,456,270
+offsets:16,0,480,270
+Partical_fx/Comp 1_00027
+bounds:925,627,457,268
+offsets:15,2,480,270
+Partical_fx/Comp 1_00028
+bounds:2,1436,458,259
+offsets:14,0,480,270
+Partical_fx/Comp 1_00029
+bounds:1384,627,460,268
+offsets:13,0,480,270
+Partical_fx/Comp 1_00030
+bounds:915,1166,461,263
+offsets:12,3,480,270
+Partical_fx/Comp 1_00033
+bounds:1378,1165,465,264
+offsets:9,0,480,270
+Partical_fx/Comp 1_00035
+bounds:2,1697,467,256
+offsets:7,14,480,270
+Partical_fx/Comp 1_00036
+bounds:455,629,468,267
+offsets:6,0,480,270
+Partical_fx/Comp 1_00037
+bounds:2,359,468,268
+offsets:6,2,480,270
+Partical_fx/Comp 1_00038
+bounds:1403,1695,470,258
+offsets:5,0,480,270
+Partical_fx/Comp 1_00039
+bounds:930,355,471,270
+offsets:4,0,480,270
+Partical_fx/Comp 1_00040
+bounds:1363,897,472,266
+offsets:3,4,480,270
+Partical_fx/Comp 1_00042
+bounds:471,1696,474,257
+offsets:1,1,480,270
+
+You_Win_3.png
+size:1374,868
+filter:Linear,Linear
+pma:true
+Machine
+bounds:2,2,1370,864
+offsets:1,1,1372,866

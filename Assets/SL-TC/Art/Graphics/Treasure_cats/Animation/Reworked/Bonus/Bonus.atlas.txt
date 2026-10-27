@@ -1,0 +1,200 @@
+Bonus.png
+size:2008,907
+filter:Linear,Linear
+pma:true
+Comp 1/Comp 1_00000
+bounds:1379,430,166,154
+offsets:566,119,1301,687
+Comp 1/Comp 1_00001
+bounds:1379,430,166,154
+offsets:566,119,1301,687
+Comp 1/Comp 1_00002
+bounds:1094,364,188,187
+offsets:549,106,1301,687
+Comp 1/Comp 1_00003
+bounds:1094,364,188,187
+offsets:549,106,1301,687
+Comp 1/Comp 1_00004
+bounds:1094,364,188,187
+offsets:549,106,1301,687
+Comp 1/Comp 1_00005
+bounds:697,74,210,220
+offsets:533,95,1301,687
+rotate:90
+Comp 1/Comp 1_00006
+bounds:697,74,210,220
+offsets:533,95,1301,687
+rotate:90
+Comp 1/Comp 1_00007
+bounds:754,286,232,252
+offsets:517,86,1301,687
+rotate:90
+Comp 1/Comp 1_00008
+bounds:754,286,232,252
+offsets:517,86,1301,687
+rotate:90
+Comp 1/Comp 1_00009
+bounds:1653,619,254,286
+offsets:500,78,1301,687
+Comp 1/Comp 1_00010
+bounds:1653,619,254,286
+offsets:500,78,1301,687
+Comp 1/Comp 1_00011
+bounds:1653,619,254,286
+offsets:500,78,1301,687
+Comp 1/Comp 1_00012
+bounds:1375,586,276,319
+offsets:484,72,1301,687
+Comp 1/Comp 1_00013
+bounds:1375,586,276,319
+offsets:484,72,1301,687
+Comp 1/Comp 1_00014
+bounds:1076,553,297,352
+offsets:468,68,1301,687
+Comp 1/Comp 1_00015
+bounds:1076,553,297,352
+offsets:468,68,1301,687
+Comp 1/Comp 1_00016
+bounds:754,520,320,385
+offsets:451,65,1301,687
+Comp 1/Comp 1_00017
+bounds:754,520,320,385
+offsets:451,65,1301,687
+Comp 1/Comp 1_00018
+bounds:2,2,342,418
+offsets:435,64,1301,687
+Comp 1/Comp 1_00019
+bounds:2,2,342,418
+offsets:435,64,1301,687
+Comp 1/Comp 1_00020
+bounds:2,2,342,418
+offsets:435,64,1301,687
+Comp 1/Comp 1_00021
+bounds:389,454,363,451
+offsets:419,65,1301,687
+Comp 1/Comp 1_00022
+bounds:389,454,363,451
+offsets:419,65,1301,687
+Comp 1/Comp 1_00023
+bounds:2,422,385,483
+offsets:403,68,1301,687
+base
+bounds:502,121,331,193
+offsets:12,41,353,270
+rotate:90
+ray
+bounds:1547,432,152,152
+offsets:18,18,188,188
+star
+bounds:1701,474,142,143
+offsets:9,8,159,159
+text
+bounds:346,40,380,154
+offsets:11,62,402,265
+rotate:90
+text_Fx/text_00000
+bounds:1379,351,190,77
+offsets:6,31,201,133
+text_Fx/text_00001
+bounds:1845,428,189,77
+offsets:7,31,201,133
+rotate:90
+text_Fx/text_00002
+bounds:1845,238,188,77
+offsets:8,31,201,133
+rotate:90
+text_Fx/text_00003
+bounds:1924,331,190,77
+offsets:6,31,201,133
+rotate:90
+text_Fx/text_00004
+bounds:502,37,193,82
+offsets:3,27,201,133
+text_Fx/text_00005
+bounds:919,91,193,88
+offsets:3,24,201,133
+rotate:90
+text_Fx/text_00006
+bounds:919,2,190,87
+offsets:6,25,201,133
+text_Fx/text_00007
+bounds:1571,348,190,82
+offsets:6,27,201,133
+text_Fx/text_00008
+bounds:1111,89,190,78
+offsets:6,30,201,133
+text_Fx/text_00009
+bounds:1567,89,190,81
+offsets:6,27,201,133
+text_Fx/text_00010
+bounds:1009,133,190,84
+offsets:6,24,201,133
+rotate:90
+text_Fx/text_00011
+bounds:1565,260,190,86
+offsets:6,25,201,133
+text_Fx/text_00012
+bounds:1373,261,190,88
+offsets:6,27,201,133
+text_Fx/text_00013
+bounds:1909,715,190,93
+offsets:6,24,201,133
+rotate:90
+text_Fx/text_00014
+bounds:1284,361,190,93
+offsets:6,24,201,133
+rotate:90
+text_Fx/text_00015
+bounds:1095,172,190,92
+offsets:6,24,201,133
+rotate:90
+text_Fx/text_00016
+bounds:1282,169,190,89
+offsets:6,24,201,133
+rotate:90
+text_Fx/text_00017
+bounds:1189,172,190,91
+offsets:6,23,201,133
+rotate:90
+text_Fx/text_00018
+bounds:1373,172,190,87
+offsets:6,24,201,133
+text_Fx/text_00019
+bounds:1303,3,190,84
+offsets:6,24,201,133
+text_Fx/text_00020
+bounds:1495,3,190,84
+offsets:6,24,201,133
+text_Fx/text_00021
+bounds:1924,523,190,82
+offsets:6,26,201,133
+rotate:90
+text_Fx/text_00022
+bounds:1763,282,190,80
+offsets:6,28,201,133
+rotate:90
+text_Fx/text_00023
+bounds:1111,2,190,85
+offsets:6,25,201,133
+text_Fx/text_00024
+bounds:1565,172,190,86
+offsets:6,24,201,133
+text_Fx/text_00025
+bounds:1008,325,193,84
+offsets:6,24,201,133
+rotate:90
+text_Fx/text_00026
+bounds:1373,89,192,81
+offsets:6,27,201,133
+text_Fx/text_00027
+bounds:1924,141,188,77
+offsets:6,31,201,133
+rotate:90
+text_Fx/text_00028
+bounds:1838,49,187,77
+offsets:6,31,201,133
+rotate:90
+text_Fx/text_00029
+bounds:1759,91,189,77
+offsets:6,31,201,133
+rotate:90
