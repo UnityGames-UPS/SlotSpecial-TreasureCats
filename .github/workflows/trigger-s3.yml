@@ -9,6 +9,8 @@ on:
 jobs:
   call-reusable:
     uses: UnityGames-UPS/unity-build-pipeline/.github/workflows/br.yml@dev
+    secrets:
+      DISCORD_WEBHOOK_DEV: ${{ secrets.DISCORD_WEBHOOK_DEV }}
     with:
       deploy_env: dev
       s3_bucket: unity.build-dev
