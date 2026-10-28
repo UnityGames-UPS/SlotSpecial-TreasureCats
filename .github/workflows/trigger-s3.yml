@@ -9,10 +9,7 @@ on:
 jobs:
   call-reusable:
     uses: UnityGames-UPS/unity-build-pipeline/.github/workflows/br.yml@main
-    secrets:
-      DISCORD_WEBHOOK_DEV: ${{ secrets.DISCORD_WEBHOOK_DEV }}
     with:
-      deploy_env: prod
       s3_bucket: unity.build-prod
       s3_folder: SL-TC
       cloudfront_distribution_id: E1SPDAO62CBV8F
