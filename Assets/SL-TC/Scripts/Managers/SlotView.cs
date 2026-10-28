@@ -349,7 +349,10 @@ public class SlotView : MonoBehaviour
 
   private void DisableAllOverlays()
   {
-    SetWinOverlayActive(false);
+    winOverlayHeld = false;
+    featureOverlayHeld = false;
+    if (winDarkenOverlay != null && winDarkenOverlay.activeSelf)
+      winDarkenOverlay.SetActive(false);
     HideAllWinLineTexts();
     if (symbolInfoCard) symbolInfoCard.HideCard();
   }
@@ -1383,6 +1386,7 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
   internal void ReleaseFeatureOverlay()
   {
     featureOverlayHeld = false;
+    winOverlayHeld = false;
     SetWinOverlayActive(false);
   }
 
@@ -1419,6 +1423,9 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
 
   private void SetWinOverlayActive(bool active)
   {
+    // While the reels are spinning, the black overlay must always remain disabled.
+    if (active && isSpinning) return;
+
     // EITHER hold blocks a hide, and the feature hold is the stronger of the two. A free-spin
     // intro deliberately starts a spin while its popups are still up, and that spin's
     // StartSpin -> KillWinTweens -> ReleaseWinOverlay would otherwise take the panel down out

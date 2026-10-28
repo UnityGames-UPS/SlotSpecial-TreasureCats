@@ -255,6 +255,7 @@ internal class FreeSpinPresenter : MonoBehaviour
     // what stops GameManager settling them until the popups below are done.
     IsIntroBlocking = true;
     introStopRequested = false;
+    slotView?.ReleaseFeatureOverlay();
     gameManager?.StartFirstFreeSpin();
 
     IsIntroBlocking = false;
@@ -436,6 +437,7 @@ internal class FreeSpinPresenter : MonoBehaviour
 
     uiManager?.HideFreeSpinDisplay();
 
+    slotView?.ReleaseFeatureOverlay();
 
     sequence = null;
     outroRound = null;
