@@ -1,0 +1,120 @@
+You_Did_It_BG.png
+size:1993,1992
+filter:Linear,Linear
+pma:true
+Partical_fx/Comp 1_00000
+bounds:905,1323,455,248
+offsets:16,13,480,270
+Partical_fx/Comp 1_00001
+bounds:455,10,455,266
+offsets:16,0,480,270
+Partical_fx/Comp 1_00002
+bounds:456,278,454,264
+offsets:17,0,480,270
+Partical_fx/Comp 1_00003
+bounds:1368,539,454,261
+offsets:17,0,480,270
+Partical_fx/Comp 1_00004
+bounds:455,1600,453,242
+offsets:18,7,480,270
+Partical_fx/Comp 1_00005
+bounds:462,544,453,260
+offsets:18,0,480,270
+Partical_fx/Comp 1_00006
+bounds:450,1099,453,251
+offsets:18,0,480,270
+Partical_fx/Comp 1_00007
+bounds:2,314,452,262
+offsets:19,0,480,270
+Partical_fx/Comp 1_00008
+bounds:451,1352,452,246
+offsets:19,0,480,270
+Partical_fx/Comp 1_00009
+bounds:905,1066,451,255
+offsets:20,3,480,270
+Partical_fx/Comp 1_00011
+bounds:2,46,451,266
+offsets:21,0,480,270
+Partical_fx/Comp 1_00012
+bounds:2,1725,451,237
+offsets:21,0,480,270
+Partical_fx/Comp 1_00013
+bounds:1362,1322,450,249
+offsets:22,0,480,270
+Partical_fx/Comp 1_00014
+bounds:429,839,450,258
+offsets:22,0,480,270
+Partical_fx/Comp 1_00015
+bounds:917,540,449,260
+offsets:23,0,480,270
+Partical_fx/Comp 1_00016
+bounds:1337,802,449,259
+offsets:23,0,480,270
+Partical_fx/Comp 1_00017
+bounds:912,6,449,266
+offsets:23,4,480,270
+Partical_fx/Comp 1_00018
+bounds:1480,1755,449,235
+offsets:23,5,480,270
+Partical_fx/Comp 1_00019
+bounds:2,1223,446,252
+offsets:24,0,480,270
+Partical_fx/Comp 1_00020
+bounds:2,958,425,263
+offsets:24,0,480,270
+Partical_fx/Comp 1_00021
+bounds:1053,1762,425,228
+offsets:24,7,480,270
+Partical_fx/Comp 1_00022
+bounds:2,1477,447,246
+offsets:24,0,480,270
+Partical_fx/Comp 1_00023
+bounds:1358,1063,452,257
+offsets:19,0,480,270
+Partical_fx/Comp 1_00024
+bounds:881,806,454,258
+offsets:18,3,480,270
+Partical_fx/Comp 1_00025
+bounds:1375,272,455,265
+offsets:17,0,480,270
+Partical_fx/Comp 1_00027
+bounds:1363,2,457,268
+offsets:15,2,480,270
+Partical_fx/Comp 1_00028
+bounds:2,578,458,259
+offsets:14,0,480,270
+Partical_fx/Comp 1_00030
+bounds:912,274,461,263
+offsets:12,3,480,270
+YOU COMPLETED
+bounds:2,1964,520,26
+offsets:1,2,523,29
+frame
+bounds:910,1573,1081,180
+offsets:3,3,1085,184
+you did it
+bounds:524,1844,527,146
+offsets:1,1,529,148
+
+You_Did_It_BG_2.png
+size:1549,759
+filter:Linear,Linear
+pma:true
+Coin
+bounds:2,464,1485,293
+offsets:2,2,1488,297
+Partical_fx/Comp 1_00010
+bounds:1278,11,451,269
+offsets:20,0,480,270
+rotate:90
+Partical_fx/Comp 1_00026
+bounds:1006,6,456,270
+offsets:16,0,480,270
+rotate:90
+Partical_fx/Comp 1_00029
+bounds:736,2,460,268
+offsets:13,0,480,270
+rotate:90
+base
+bounds:2,33,732,429
+offsets:1,1,734,432

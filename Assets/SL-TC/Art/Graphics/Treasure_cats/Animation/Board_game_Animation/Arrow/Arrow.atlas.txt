@@ -1,0 +1,10 @@
+Arrow.png
+size:432,367
+filter:Linear,Linear
+pma:true
+Arrow icon
+bounds:2,2,363,386
+offsets:3,12,367,400
+rotate:90
+Swipe
+bounds:390,293,40,72

@@ -349,7 +349,13 @@ public class SocketIOManager : MonoBehaviour
 
     private void OnResultReceived(string jsonData)
     {
-        if (!jsonData.Contains("\"id\":\"ResultData\""))
+        if (jsonData.IndexOf("\"bonusResult\"", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            OnBonusResultReceived(jsonData);
+            return;
+        }
+
+        if (jsonData.IndexOf("\"ResultData\"", StringComparison.OrdinalIgnoreCase) < 0)
         {
             return;
         }
@@ -384,6 +390,34 @@ public class SocketIOManager : MonoBehaviour
         catch (Exception e)
         {
             Debug.LogError($"[SocketIO] Result parse failed: {e.Message}");
+        }
+    }
+
+    // Handles the server response to a 'BONUS' dice roll request during a Treasure Hunt feature
+    // Updates the player balance and forwards the result to GameManager
+    private void OnBonusResultReceived(string jsonData)
+    {
+        Debug.Log($"[SocketIO] Bonus result received: {jsonData}");
+
+        try
+        {
+            var bonusResult = JsonConvert.DeserializeObject<BonusResultData>(jsonData);
+
+            if (bonusResult == null || !bonusResult.success)
+            {
+                Debug.LogError("[SocketIO] Bonus result failed or was null");
+                return;
+            }
+
+            // Update balance from server
+            if (bonusResult.player?.balance != null && gameManager?.playerData != null)
+                gameManager.playerData.balance = bonusResult.player.balance.Value;
+
+            gameManager.OnBonusResultReceived(bonusResult);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[SocketIO] Bonus result parse failed: {e.Message}");
         }
     }
 
@@ -617,6 +651,26 @@ public class SocketIOManager : MonoBehaviour
         gameSocket.Emit("request", json);
     }
 
+    // Sends a BONUS request to the server to roll the dice during an active Treasure Hunt feature
+    // only be called while a bonus round is active
+    internal void SendBonusRequest(int betIndex)
+    {
+        Debug.Log($"[SocketIO] Bonus request: betIndex={betIndex}");
+
+        if (gameSocket == null || !isConnected)
+        {
+            Debug.LogError("[SocketIO] Cannot send bonus request: socket is disconnected or null");
+            return;
+        }
+
+        var request = new BonusRequest
+        {
+            payload = new BonusPayload { betIndex = betIndex }
+        };
+
+        string bonusJson = JsonConvert.SerializeObject(request);
+        gameSocket.Emit("request", bonusJson);
+    }
 
     #endregion
 

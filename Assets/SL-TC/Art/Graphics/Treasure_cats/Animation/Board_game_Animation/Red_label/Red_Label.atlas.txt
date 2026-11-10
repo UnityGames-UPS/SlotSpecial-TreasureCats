@@ -1,0 +1,11 @@
+Red_Label.png
+size:514,375
+filter:Linear,Linear
+pma:true
+glow_new
+bounds:414,275,98,98
+offsets:1,1,100,103
+red label
+bounds:2,2,371,410
+offsets:2,15,374,426
+rotate:90

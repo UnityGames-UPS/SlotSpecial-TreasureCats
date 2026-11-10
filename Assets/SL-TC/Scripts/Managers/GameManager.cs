@@ -10,6 +10,7 @@ public class GameManager : MonoBehaviour
   [SerializeField] private PopupManager popupManager;
   [SerializeField] private SlotView slotView;
   [SerializeField] private FreeSpinPresenter freeSpinPresenter;
+  [SerializeField] private BonusManager bonusManager;
 
   [Header("Spin Settings")]
   [SerializeField] private float normalSpinDuration = 3.5f;
@@ -29,6 +30,7 @@ public class GameManager : MonoBehaviour
   internal bool isAutoPlaying;
   internal int autoPlayTotalRounds;
   internal int autoPlayRemainingRounds;
+  private Coroutine autoPlayCoroutine;
 
   internal bool isInFreeSpins;
   internal int freeSpinsRemaining;
@@ -48,6 +50,13 @@ public class GameManager : MonoBehaviour
   /// presentation must play AFTER the coin flights and the win lines, not instead of them.
   /// </summary>
   private FreeSpinRound pendingRound;
+  private bool pendingTreasureHunt;
+  private TreasureHuntData pendingHuntData;
+  public bool HasPendingTreasureHunt => pendingTreasureHunt;
+
+  private BonusResultData _pendingBonusResult;
+  internal bool HasPendingBonusResult => _pendingBonusResult != null;
+
 
   internal bool isInitialized;
   internal bool initializationFailed;
@@ -87,6 +96,9 @@ public class GameManager : MonoBehaviour
     currentState = GameState.Idle;
 
     uiManager.OnGameInitialized();
+
+    if (bonusManager != null && gameConfig?.features?.treasureHunt != null)
+      bonusManager.InitFromConfig(gameConfig.features.treasureHunt);
   }
 
   #endregion
@@ -266,6 +278,7 @@ public class GameManager : MonoBehaviour
       bool endsRound = isInFreeSpins && currentRound != null &&
                        (lastResult.isRoundOver || lastResult.serverSpinsRemaining <= 0);
       LatchFreeSpinTrigger();
+      LatchTreasureHuntTrigger();
     }    
 
     // 4. Cosmetic hold, interruptible by Stop.
@@ -357,7 +370,7 @@ public class GameManager : MonoBehaviour
     // The unlock is in ProcessSpecialFeaturesAfterWin rather than here, so it happens exactly
     // once whether or not a popup actually appears — a win with no popup would otherwise
     // stay locked forever.
-    if (lastResult != null && lastResult.winAmount > 0)
+    if ((lastResult != null && lastResult.winAmount > 0) || pendingTreasureHunt)
       uiManager.DisableControlsDuringWinAnimation();
 
     currentState = GameState.Idle;
@@ -379,7 +392,7 @@ public class GameManager : MonoBehaviour
     }
     else
     {
-      slotView?.ShowNoWinOverlay();
+      if (!pendingTreasureHunt) slotView?.ShowNoWinOverlay();
       OnWinAnimationComplete();
     }
   }
@@ -401,7 +414,56 @@ public class GameManager : MonoBehaviour
     // spin. Every path through the presentation passes here, popup or not. Redundant after
     // OnWinPopupClosed, which has already done it — and harmless, because the method is
     // idempotent and no-ops while any special win is still flagged.
-    uiManager.EnableControlsAfterWinAnimation();
+    if (!pendingTreasureHunt)
+      uiManager.EnableControlsAfterWinAnimation();
+
+    if (pendingTreasureHunt)
+    {
+      var huntData = pendingHuntData;
+      pendingTreasureHunt = false;
+      pendingHuntData = null;
+
+      if (lastResult != null)
+      {
+        lastResult = null;
+      }
+
+      if (isAutoPlaying)
+      {
+        StopAutoPlay();
+      }
+
+      Debug.Log("Starting Treasure Hunt feature");
+
+      if (bonusManager == null)
+      {
+        bonusManager = Object.FindFirstObjectByType<BonusManager>();
+      }
+
+      if (bonusManager != null)
+      {
+        yield return StartCoroutine(bonusManager.PlayTreasureHuntRound(huntData));
+      }
+      else
+      {
+        Debug.LogError("BonusManager reference is not set");
+      }
+
+      if (!IsSpinning())
+      {
+        currentState = GameState.Idle;
+        uiManager.OnSpinCompleted(null);
+      }
+      uiManager.UpdateBalanceDisplay(force: true);
+
+      if (isInFreeSpins)
+      {
+        ResumeAfterSpecialFeature();
+        yield break;
+      }
+
+      yield break;
+    }
 
     // The free-spin trigger presentation lands here, after the coin flights and the whole win
     // presentation have played. It does NOT fall through to ResumeAfterSpecialFeature: the
@@ -466,6 +528,18 @@ public class GameManager : MonoBehaviour
     };
   }
 
+  internal void OnBonusResultReceived(BonusResultData result)
+  {
+    _pendingBonusResult = result;
+  }
+
+  internal BonusResultData ConsumePendingBonusResult()
+  {
+    var r = _pendingBonusResult;
+    _pendingBonusResult = null;
+    return r;
+  }
+
   internal void OnSpinResultReceived(SpinResult result)
   {
     lastResult = result;
@@ -485,6 +559,8 @@ public class GameManager : MonoBehaviour
 
   private void ProcessSpinResult()
   {
+    if (lastResult == null) return;
+
     playerData = lastResult.playerData;
 
     uiManager.OnSpinCompleted(lastResult);
@@ -607,7 +683,34 @@ public class GameManager : MonoBehaviour
     isAutoPlaying = false;
     autoPlayRemainingRounds = 0;
 
+    if (autoPlayCoroutine != null)
+    {
+      StopCoroutine(autoPlayCoroutine);
+      autoPlayCoroutine = null;
+    }
+
     uiManager.OnAutoPlayStopped();
+  }
+
+  private IEnumerator AutoPlayDelay(float delay)
+  {
+    yield return new WaitForSeconds(delay);
+    autoPlayCoroutine = null;
+
+    if (!isAutoPlaying || isInFreeSpins) yield break;
+
+    double totalPay = GetTotalPay();
+    if (playerData.balance < totalPay)
+    {
+      currentState = GameState.Idle;
+      StopAutoPlay();
+      if (popupManager != null) popupManager.ShowInsufficientFundsError();
+    }
+    else
+    {
+      currentState = GameState.Idle;
+      RequestSpin();
+    }
   }
 
   // NOTE: autoplay is not resumed after a free-spin round. A trigger ends it outright (see
@@ -787,5 +890,83 @@ public class GameManager : MonoBehaviour
     return CountScatterSymbols(matrix) > 0;
   }
 
-  #endregion
+  private void LatchTreasureHuntTrigger()
+  {
+    if (pendingTreasureHunt || lastResult == null) return;
+
+    bool disabledInFS = gameConfig?.features?.treasureHunt != null && gameConfig.features.treasureHunt.disabledDuringFreeGames;
+    if (isInFreeSpins && disabledInFS) return;
+
+    int minTriggerCount = (gameConfig?.features?.treasureHunt != null && gameConfig.features.treasureHunt.minTriggerCount > 0)
+        ? gameConfig.features.treasureHunt.minTriggerCount
+        : 3;
+
+    int bonusCount = CountBonusSymbols(lastResult.resultMatrix);
+    Debug.Log($"Checking bonus symbols in resultMatrix- Count = {bonusCount}, Required = {minTriggerCount}");
+
+    bool hasServerData = lastResult.treasureHuntData != null || lastResult.triggeredFeatures != null;
+
+    bool isServerTriggered = (lastResult.triggeredFeatures != null && (lastResult.triggeredFeatures.Contains("treasureHunt") || lastResult.triggeredFeatures.Contains("bonus")))
+        || (lastResult.treasureHuntData != null && lastResult.treasureHuntData.triggered);
+
+    bool shouldTrigger = hasServerData
+        ? isServerTriggered
+        : (bonusCount >= minTriggerCount && HasRequiredReelsForBonus(lastResult.resultMatrix));
+
+    if (shouldTrigger)
+    {
+      Debug.Log($"[TreasureHunt] Feature Triggered! (Bonus symbols: {bonusCount}, Server triggered: {isServerTriggered})");
+      pendingTreasureHunt = true;
+
+      pendingHuntData = (lastResult.treasureHuntData != null && lastResult.treasureHuntData.triggered)
+          ? lastResult.treasureHuntData
+          : new TreasureHuntData
+      {
+        triggered = true,
+        bonusCount = bonusCount,
+        markerPosition = 0
+      };
+    }
+  }
+  internal bool HasRequiredReelsForBonus(List<List<int>> matrix)
+  {
+    if (matrix == null) return false;
+    int bonusId = (gameConfig != null && gameConfig.bonusSymbolId > 0) ? gameConfig.bonusSymbolId : 2;
+    var requiredReels = (gameConfig?.features?.treasureHunt?.requiredReels != null
+                         && gameConfig.features.treasureHunt.requiredReels.Count > 0)
+        ? gameConfig.features.treasureHunt.requiredReels
+        : new List<int> { 1, 2, 3 };
+
+    foreach (int colIndex in requiredReels)
+    {
+      if (colIndex < 0 || colIndex >= matrix.Count || matrix[colIndex] == null) return false;
+      bool hasBonus = false;
+      for (int row = 0; row < matrix[colIndex].Count; row++)
+      {
+        if (matrix[colIndex][row] == bonusId) { hasBonus = true; break; }
+      }
+      if (!hasBonus) return false;
+    }
+    return true;
+  }
+
+  internal int CountBonusSymbols(List<List<int>> matrix)
+  {
+    if (matrix == null) return 0;
+    int bonusId = (gameConfig != null && gameConfig.bonusSymbolId > 0) ? gameConfig.bonusSymbolId : 2;
+    int count = 0;
+
+    foreach (var col in matrix)
+    {
+      if (col == null) continue;
+      foreach (int sym in col)
+      {
+        if (sym == bonusId) count++;
+      }
+    }
+
+    return count;
+  }
+
 }
+#endregion

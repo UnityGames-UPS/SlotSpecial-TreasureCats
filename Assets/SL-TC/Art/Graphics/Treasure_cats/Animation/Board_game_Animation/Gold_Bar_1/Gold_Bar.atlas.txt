@@ -1,0 +1,10 @@
+Gold_Bar.png
+size:596,352
+filter:Linear,Linear
+pma:true
+glow_new
+bounds:496,252,98,98
+offsets:1,1,100,103
+gold bars
+bounds:2,2,492,348
+offsets:1,1,494,350

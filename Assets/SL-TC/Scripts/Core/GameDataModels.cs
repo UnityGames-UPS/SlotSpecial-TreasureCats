@@ -65,24 +65,14 @@ public class ServerGameData
   public int totalLines;
 }
 
-/// <summary>
-/// Rich Piggies init "features" block. Note this is a mix of static feature configuration
-/// (the pig blocks) and live per-player state (activeFeature / freeSpinsRemaining / meters).
-/// </summary>
 [Serializable]
 public class ServerFeatures
 {
-  // [NEW - Treasure Cats Feature Models from DataModel]
   public Scatter scatter;
   public FreeGames freeGames;
   public TreasureHunt treasureHunt;
   public WildSubstitution wildSubstitution;
 
-  // [LEGACY - Retained for PigMeterController compatibility]
-  public MysteryRevealFeature mysteryReveal;
-  public BluePigFeature bluePig;
-  public YellowPigFeature yellowPig;
-  public RedPigFeature redPig;
 
   /// <summary>Minimum symbols on adjacent reels from the leftmost reel for a line to pay.</summary>
   public int minMatchCount;
@@ -129,36 +119,10 @@ public class StringOrArrayConverter : JsonConverter
   }
 }
 
-[Serializable]
-public class MysteryRevealFeature
-{
-  public bool enabled;
-}
 
-[Serializable]
-public class BluePigFeature
-{
-  public int defaultMeter;
-  public int maxMeter;
-}
 
-[Serializable]
-public class YellowPigFeature
-{
-  public int freeSpinsCount;
-  /// <summary>Spaces each jackpot meter must fill before it awards, keyed by tier name.</summary>
-  public Dictionary<string, int> jackpotLevels;
-  public Dictionary<string, double> defaultJackpotMultipliers;
-}
 
-[Serializable]
-public class RedPigFeature
-{
-  public int defaultWilds;
-  public int maxMeter;
-  public int freeSpinsCount;
-  public List<int> wildCountBuckets;
-}
+
 
 /// <summary>The three persistent meters. Blue = free spins, red = wilds, yellow = jackpots.</summary>
 [Serializable]
@@ -225,12 +189,97 @@ public class ServerSpinResponse
   public ServerPlayerBalance player;
   public ServerPayload payload;
   public ServerScatter scatter;
+  public TreasureHuntData treasureHunt;
 }
 
 [Serializable]
 public class ServerPlayerBalance
 {
   public double? balance; // Nullable because server sends null
+}
+
+[Serializable]
+public class BonusPosition
+{
+  public int row;
+  public int col;
+}
+
+[Serializable]
+public class TreasureHuntData
+{
+  public bool triggered;
+  public int bonusCount;
+  public int markerPosition;
+  public int diceRoll;
+  public int markerSteps;
+  public double winAmount;
+  public List<BonusPosition> positions;
+
+  public int dice;
+  public int previousPosition;
+  public int currentPosition;
+  public int finalPosition;
+  public int tileIndex;
+  public string tileType;
+  public string wheelPrize;
+  public int diceThrows;
+  public double coinWin;
+  public int chancesRemaining;
+  public int landsRemaining;
+  public double totalBonusWin;
+  public double currentWinning;
+  public bool isOver;
+  public bool speedBoostActive;
+  public int boostSteps;
+  public int boostedTileIndex;
+  public string boostedTileType;
+  public List<int> usedTileIndexes;
+}
+[Serializable]
+public class BonusRequest
+{
+  public string type = "BONUS";
+  public BonusPayload payload;
+}
+
+[Serializable]
+public class BonusPayload
+{
+  public int betIndex;
+}
+
+[Serializable]
+public class BonusResultData
+{
+  public string id;
+  public bool success;
+  public ServerPlayerBalance player;
+  public BonusResultPayload payload;
+}
+
+[Serializable]
+public class BonusResultPayload
+{
+  public int dice;
+  public int previousPosition;
+  public int currentPosition;
+  public int finalPosition;
+  public int tileIndex;
+  public string tileType;
+  public string wheelPrize;
+  public int diceThrows;
+  public double coinWin;
+  public int chancesRemaining;
+  public int landsRemaining;
+  public double totalBonusWin;
+  public bool isOver;
+  public double currentWinning;
+  public bool speedBoostActive;
+  public int boostSteps;
+  public int boostedTileIndex;
+  public string boostedTileType;
+  public List<int> usedTileIndexes;
 }
 
 [Serializable]
@@ -271,6 +320,7 @@ public class ServerPayload
   /// <summary>Meter values AFTER this spin. The client diffs these to attribute coins.</summary>
   public ServerMeters meters;
   public ServerScatter scatter;
+  public TreasureHuntData treasureHunt;
 }
 
 [Serializable]
@@ -411,17 +461,6 @@ public class GameConfig
   public int reelCount = 5;
   public int rowCount = 3;
 
-  // public int symbolCount = RichPiggiesSymbols.TotalSymbolCount;
-  // public int wildSymbolId = RichPiggiesSymbols.Wild;
-  // public int mysterySymbolId = RichPiggiesSymbols.Mystery;
-  // public int blueCoinSymbolId = RichPiggiesSymbols.BlueCoin;
-  // public int yellowCoinSymbolId = RichPiggiesSymbols.YellowCoin;
-  // public int redCoinSymbolId = RichPiggiesSymbols.RedCoin;
-  // public int mysterySymbolId = -1;
-  // public int blueCoinSymbolId = -1;
-  // public int yellowCoinSymbolId = -1;
-  // public int redCoinSymbolId = -1;
-
   public int symbolCount = 0;
   public int wildSymbolId = -1;
   public int scatterSymbolId = -1;
@@ -519,6 +558,7 @@ public class SpinResult
   public FreeSpinData freeSpinData;
   public ScatterData scatterData;
   public OverlayScatterData overlayScatterData; // Keep for safety/UI compilation
+  public TreasureHuntData treasureHuntData;
   public Dictionary<string, int> stickyWilds;  // Keep for safety/UI compilation
 
   // Server-authoritative free spin state
@@ -705,14 +745,6 @@ public static class InitDataConverter
           }
         }
         config.symbols.Add(symbolInfo);
-        // switch (serverSymbol.name.ToLower())
-        // {
-        //   case "wild": config.wildSymbolId = symbolInfo.id; break;
-        //   case "mystery": config.mysterySymbolId = symbolInfo.id; break;
-        //   case "bluecoin": config.blueCoinSymbolId = symbolInfo.id; break;
-        //   case "yellowcoin": config.yellowCoinSymbolId = symbolInfo.id; break;
-        //   case "redcoin": config.redCoinSymbolId = symbolInfo.id; break;
-        // }
       }
     }
 
@@ -722,6 +754,35 @@ public static class InitDataConverter
         config.minMatchCount = serverData.features.minMatchCount;
 
       config.features = serverData.features;
+    }
+
+    if (config.features == null)
+    {
+      config.features = new ServerFeatures();
+    }
+
+    if (config.features.treasureHunt == null)
+    {
+      config.features.treasureHunt = new TreasureHunt
+      {
+        enabled = true,
+        bonusSymbolId = 2,
+        minTriggerCount = 3,
+        requiredReels = new List<int> { 1, 2, 3 },
+        disabledDuringFreeGames = true,
+        mapTiles = new List<string> { "start", "coin", "coin", "dice", "coin", "end" },
+        coinPrizes = new List<int> { 10, 20, 50 },
+        wheel = new Wheel
+        {
+          coinPrizes = new List<int> { 10, 20, 50, 100 },
+          diceThrows = new List<int> { 1, 2, 3, 4, 5, 6 }
+        }
+      };
+    }
+
+    if (config.bonusSymbolId <= 0)
+    {
+      config.bonusSymbolId = config.features.treasureHunt.bonusSymbolId > 0 ? config.features.treasureHunt.bonusSymbolId : 2;
     }
 
     return config;
@@ -927,6 +988,7 @@ public static class InitDataConverter
       // against its cached snapshot to decide which meter each coin moved.
       meters = payload?.meters,
       jackpotWins = payload?.jackpotWin,
+      treasureHuntData = payload?.treasureHunt,
       triggeredFeatures = payload?.triggeredFeatures,
       activeFeature = payload?.activeFeature,
       yellowFSCollections = payload?.yellowFSCollections,

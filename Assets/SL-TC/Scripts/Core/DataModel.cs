@@ -69,6 +69,10 @@ public class TreasureHunt
     public bool enabled { get; set; }
     public List<string> mapTiles { get; set; }
     public List<int> coinPrizes { get; set; }
+    public int initialChances { get; set; }
+    public List<int> goldenCoinPrizes { get; set; }
+    public List<int> purpleCoinPrizes { get; set; }
+    public List<int> speedBoostSteps { get; set; }
     public int bonusSymbolId { get; set; }
     public List<int> requiredReels { get; set; }
     public int minTriggerCount { get; set; }
@@ -79,6 +83,7 @@ public class TreasureHunt
 public class Wheel
 {
     public List<int> coinPrizes { get; set; }
+    public List<int> speedBoostSteps { get; set; }
     public List<int> diceThrows { get; set; }
 }
 

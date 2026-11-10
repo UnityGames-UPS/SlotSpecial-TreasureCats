@@ -85,6 +85,7 @@ public class OCController : MonoBehaviour
         KillActiveTweens();
 
         bool isMobilePortrait = (mode == OrientationChange.OrientationMode.MobilePortrait);
+        bool isBonusActive = BonusManager.Instance != null && BonusManager.Instance.IsBonusRoundActive;
 
         // 1. Toggle Landscape vs Portrait Panel Objects
         if (landscapePanelObject != null)
@@ -93,7 +94,7 @@ public class OCController : MonoBehaviour
         }
         if (portraitPanelObject != null)
         {
-            portraitPanelObject.SetActive(isMobilePortrait);
+            portraitPanelObject.SetActive(isMobilePortrait && !isBonusActive);
         }
 
         // 2. Update Canvas Scaler Reference Resolution

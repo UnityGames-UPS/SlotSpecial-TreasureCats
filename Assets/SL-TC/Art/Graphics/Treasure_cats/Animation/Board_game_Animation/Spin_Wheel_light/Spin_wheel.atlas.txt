@@ -1,0 +1,11 @@
+Spin_wheel.png
+size:1906,902
+filter:Linear,Linear
+pma:true
+pink light
+bounds:996,2,898,908
+offsets:49,10,979,961
+rotate:90
+yellow light
+bounds:2,14,992,886
+offsets:1,36,1012,936

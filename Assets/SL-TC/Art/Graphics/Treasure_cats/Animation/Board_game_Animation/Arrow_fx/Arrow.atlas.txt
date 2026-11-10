@@ -1,0 +1,7 @@
+Arrow.png
+size:142,139
+filter:Linear,Linear
+pma:true
+Arrow
+bounds:2,2,138,135
+offsets:1,1,140,137

@@ -4,6 +4,7 @@ using TMPro;
 using DG.Tweening;
 using System.Collections;
 using System.Collections.Generic;
+using Spine.Unity;
 
 public class UIManager : MonoBehaviour
 {
@@ -44,6 +45,10 @@ public class UIManager : MonoBehaviour
     [Header("Spin Button - Portrait")]
     [SerializeField] private Button spinButtonPortrait;
     [SerializeField] private Button stopButtonPortrait;
+
+    [Header("Take Button")]
+    [SerializeField] private Button takeButton;
+    [SerializeField] private Button takeButtonPortrait;
 
     [Header("Auto Play Stop Control")]
     [SerializeField] private Button autoSpinStopButton;
@@ -154,6 +159,14 @@ public class UIManager : MonoBehaviour
 
     [Tooltip("Total spins awarded this round. Sprite-sheet text, as above.")]
     [SerializeField] private TMP_Text totalFSText;
+
+    [Header("Treasure Hunt Win Popup")]
+    [SerializeField] private GameObject youWinTreasureHuntPopup;
+    [SerializeField] private SkeletonGraphic youWinTreasureHuntSpine;
+    [SerializeField] private AudioClip youWinTreasureHuntClip;
+    [SerializeField] private TMP_Text youWinTreasureHuntText;
+    [SerializeField] private Button youWinCollectButton;
+    [SerializeField] private float treasureHuntTakeButtonDelay = 1.0f;
 
     [Header("Backgrounds — base vs free spin")]
     [Tooltip("Base-game background. UIManager is the only owner of these four — it picks the " +
@@ -280,6 +293,7 @@ public class UIManager : MonoBehaviour
         if (autoPlayPanelRect) autoPlayPanelRect.anchoredPosition = new Vector2(autoPlayPanelRect.anchoredPosition.x, -600f);
         if (autoPlayPanelRectPortrait) autoPlayPanelRectPortrait.anchoredPosition = new Vector2(autoPlayPanelRectPortrait.anchoredPosition.x, -600f);
         SetButtonActive(autoSpinStopButton, autoSpinStopButtonPortrait, false);
+        SetButtonActive(takeButton, takeButtonPortrait, false);
 
         SetSpinStopButtonStates(isSpinningState: false, isInteractable: true);
         UpdateSpeedButtonsVisibility(gameManager.currentSpinSpeed);
@@ -537,6 +551,14 @@ public class UIManager : MonoBehaviour
     {
         AudioManager.Instance?.PlaySpinStart();
 
+        if (youWinTreasureHuntPopup != null && youWinTreasureHuntPopup.activeSelf)
+        {
+            ResetSpine(youWinTreasureHuntSpine ? youWinTreasureHuntSpine : youWinTreasureHuntPopup.GetComponentInChildren<SkeletonGraphic>(true));
+            youWinTreasureHuntPopup.SetActive(false);
+            var popupGroup = youWinTreasureHuntPopup.GetComponentInParent<CanvasGroup>();
+            if (popupGroup != null) { popupGroup.alpha = 0f; popupGroup.blocksRaycasts = false; popupGroup.interactable = false; }
+        }
+
         if (gameManager.isInFreeSpins)
         {
             // Stop is live during free spins exactly as it is in the base game — the player is
@@ -618,6 +640,17 @@ public class UIManager : MonoBehaviour
             // The base game shows the spin button at this point; free spins cannot, because
             // the player does not start these spins, so a greyed Stop is what is left.
             SetSpinStopButtonStates(isSpinningState: true, isInteractable: false);
+
+            if (gameManager.currentRound != null)
+            {
+                bool isRoundOver = (result != null && (result.isRoundOver || result.serverSpinsRemaining <= 0))
+                                   || gameManager.freeSpinsRemaining <= 0
+                                   || gameManager.currentRound.spinsUsed >= gameManager.currentRound.totalSpins;
+                if (isRoundOver)
+                {
+                    UpdateFreeSpinCount(gameManager.currentRound.totalSpins);
+                }
+            }
         }
         else
         {
@@ -1163,6 +1196,7 @@ public class UIManager : MonoBehaviour
     internal void OnFreeSpinsEnded(double totalRoundWin, int totalSpinsUsed)
     {
         totalFreeSpinsAwarded = 0;
+        SpriteNumberFormatter.Apply(currentFSText, 0, maxDecimals: 0, grouping: false);
 
         HideFreeSpinDisplay();
 
@@ -1224,6 +1258,7 @@ public class UIManager : MonoBehaviour
     {
         OrientationChange.OnOrientationChanged -= HandleOrientationChanged;
         StopJackpotPortraitLevitation();
+        ResetSpine(youWinTreasureHuntSpine);
     }
 
     private void HandleOrientationChanged(OrientationChange.OrientationMode mode, int width, int height)
@@ -1650,6 +1685,194 @@ public class UIManager : MonoBehaviour
                 kvp.Key.anchoredPosition = kvp.Value;
             }
         }
+    }
+
+    #endregion
+
+    #region Treasure Hunt Win Popup
+
+    public IEnumerator ShowTreasureHuntWinPopup(double winAmount)
+    {
+        if (youWinTreasureHuntPopup == null)
+        {
+            CreditTreasureHuntWin(winAmount);
+            yield break;
+        }
+
+        var group = youWinTreasureHuntPopup.GetComponentInParent<CanvasGroup>();
+        if (group != null) { group.gameObject.SetActive(true); group.alpha = 1f; group.blocksRaycasts = true; group.interactable = true; }
+
+        int decimals = SpriteNumberFormatter.DecimalsUsed(winAmount, 3);
+        if (youWinTreasureHuntText != null)
+        {
+            youWinTreasureHuntText.transform.DOKill();
+            youWinTreasureHuntText.transform.localScale = Vector3.zero;
+            SpriteNumberFormatter.ApplyFixed(youWinTreasureHuntText, 0d, decimals, grouping: false);
+        }
+
+        bool collected = false;
+        bool winCredited = false;
+        Tween countTween = null;
+
+        if (youWinCollectButton == null && youWinTreasureHuntPopup != null) youWinCollectButton = youWinTreasureHuntPopup.GetComponentInChildren<Button>(true);
+        if (youWinCollectButton != null)
+        {
+            youWinCollectButton.gameObject.SetActive(false);
+        }
+
+        void TryCreditWin()
+        {
+            if (winCredited) return;
+            winCredited = true;
+            CreditTreasureHuntWin(winAmount);
+        }
+
+        SetButtonActive(spinButton, spinButtonPortrait, false);
+        SetButtonActive(takeButton, takeButtonPortrait, true);
+        SetButtonInteractable(takeButton, takeButtonPortrait, false);
+
+        AudioSource youWinAudioSource = null;
+
+        void OnTakeClicked()
+        {
+            if (collected) return;
+            collected = true;
+            countTween?.Kill();
+            if (youWinAudioSource != null && youWinAudioSource.isPlaying)
+            {
+                DOTween.Kill(youWinAudioSource);
+                youWinAudioSource.Stop();
+            }
+            AudioManager.Instance?.PlayTakeButton();
+
+            if (takeButton != null) takeButton.onClick.RemoveListener(OnTakeClicked);
+            if (takeButtonPortrait != null) takeButtonPortrait.onClick.RemoveListener(OnTakeClicked);
+            SetButtonInteractable(takeButton, takeButtonPortrait, false);
+            SetButtonActive(takeButton, takeButtonPortrait, false);
+
+            if (!gameManager.IsSpinning())
+            {
+                SetButtonActive(spinButton, spinButtonPortrait, true);
+                SetButtonInteractable(spinButton, spinButtonPortrait, true);
+            }
+
+            TryCreditWin();
+        }
+
+        if (takeButton != null)
+        {
+            takeButton.onClick.RemoveAllListeners();
+            takeButton.onClick.AddListener(OnTakeClicked);
+        }
+        if (takeButtonPortrait != null)
+        {
+            takeButtonPortrait.onClick.RemoveAllListeners();
+            takeButtonPortrait.onClick.AddListener(OnTakeClicked);
+        }
+
+        var spine = youWinTreasureHuntSpine ? youWinTreasureHuntSpine : youWinTreasureHuntPopup.GetComponentInChildren<SkeletonGraphic>(true);
+        youWinTreasureHuntPopup.SetActive(true);
+        if (spine != null)
+        {
+            spine.gameObject.SetActive(true);
+            ResetSpine(spine);
+            var entry = spine.AnimationState?.SetAnimation(0, "pop_up", false);
+            if (entry != null) entry.MixDuration = 0f;
+            spine.AnimationState?.AddAnimation(0, "loop", true, 0f);
+            spine.Update(0f);
+            if (youWinTreasureHuntClip != null)
+            {
+                youWinAudioSource = AudioManager.Instance?.PlaySfxClip(youWinTreasureHuntClip);
+            }
+        }
+
+        if (youWinTreasureHuntText != null)
+        {
+            youWinTreasureHuntText.transform.DOScale(Vector3.one, 0.35f).SetEase(Ease.OutBack);
+        }
+
+        countTween = DOVirtual.Float(0f, (float)winAmount, 1.5f, v =>
+        {
+            if (youWinTreasureHuntText != null)
+                SpriteNumberFormatter.ApplyFixed(youWinTreasureHuntText, v, decimals, grouping: false);
+        }).SetEase(Ease.Linear);
+
+        if (treasureHuntTakeButtonDelay > 0f)
+            yield return new WaitForSeconds(treasureHuntTakeButtonDelay);
+
+        if (!collected)
+            SetButtonInteractable(takeButton, takeButtonPortrait, true);
+
+        yield return new WaitUntil(() => collected || countTween == null || !countTween.IsActive());
+
+        if (youWinTreasureHuntText != null)
+            SpriteNumberFormatter.ApplyFixed(youWinTreasureHuntText, winAmount, decimals, grouping: false);
+
+        yield return new WaitUntil(() => collected || (takeButton == null && takeButtonPortrait == null));
+
+        if (takeButton != null) takeButton.onClick.RemoveListener(OnTakeClicked);
+        if (takeButtonPortrait != null) takeButtonPortrait.onClick.RemoveListener(OnTakeClicked);
+        SetButtonInteractable(takeButton, takeButtonPortrait, false);
+        SetButtonActive(takeButton, takeButtonPortrait, false);
+
+        if (!gameManager.IsSpinning())
+        {
+            SetButtonActive(spinButton, spinButtonPortrait, true);
+            SetButtonInteractable(spinButton, spinButtonPortrait, true);
+        }
+
+        if (spine != null && spine.IsValid)
+        {
+            spine.AnimationState?.SetAnimation(0, "End", false);
+        }
+
+        if (youWinTreasureHuntText != null)
+        {
+            youWinTreasureHuntText.transform.DOKill();
+            youWinTreasureHuntText.transform.DOScale(Vector3.zero, 0.12f).SetEase(Ease.InBack);
+        }
+
+        yield return new WaitForSeconds(0.12f);
+
+        ResetSpine(spine);
+
+        AudioManager.Instance?.PlayPopupClose();
+        AudioManager.Instance?.StopWin();
+        TryCreditWin();
+
+        if (youWinTreasureHuntText != null)
+        {
+            youWinTreasureHuntText.transform.DOKill();
+            youWinTreasureHuntText.transform.localScale = Vector3.one;
+            SpriteNumberFormatter.Clear(youWinTreasureHuntText);
+        }
+
+        youWinTreasureHuntPopup.SetActive(false);
+        if (group != null) { group.alpha = 0f; group.blocksRaycasts = false; group.interactable = false; }
+
+        if (!gameManager.IsSpinning())
+        {
+            SetButtonActive(spinButton, spinButtonPortrait, true);
+            SetButtonInteractable(spinButton, spinButtonPortrait, true);
+        }
+    }
+
+    private void ResetSpine(SkeletonGraphic spine)
+    {
+        if (spine == null) return;
+        if (!spine.IsValid) spine.Initialize(true);
+        spine.freeze = false;
+        spine.timeScale = 1f;
+        spine.AnimationState?.ClearTracks();
+        spine.Skeleton?.SetToSetupPose();
+        spine.Update(0f);
+    }
+
+    private void CreditTreasureHuntWin(double amount)
+    {
+        if (gameManager?.playerData != null) gameManager.playerData.balance += amount;
+        if (gameManager?.lastResult?.playerData != null) gameManager.lastResult.playerData.balance += amount;
+        UpdateBalanceDisplay(force: true);
     }
 
     #endregion

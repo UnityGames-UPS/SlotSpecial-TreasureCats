@@ -738,29 +738,25 @@ public class SlotView : MonoBehaviour
           elapsed += Time.unscaledDeltaTime;
           yield return null;
         }
-        SetGoldenEffect(col, false);
       }
 
       StopColumn(col);
 
-      landedGoldenCats += CountGoldenCatsInColumn(col);
-      if (col <= 1)
-        landedBonusSymbols += CountBonusInColumn(col);
+      landedBonusSymbols += CountBonusInColumn(col);
+      landedGoldenCats += (gameManager?.gameConfig?.scatterSymbolId >= 0) ? CountGoldenCatsInColumn(col) : 0;
 
-      // Trigger golden anticipation effect one by one
-      if (!anticipationActive && !immediate)
-      {
-        if (landedGoldenCats >= minGoldenCatsForAnticipation || landedBonusSymbols >= 2)
-        {
-          anticipationActive = true;
-          AudioManager.Instance?.StartAnticipationSpin();
-        }
-      }
+      bool scatterAnticipation = landedGoldenCats >= minGoldenCatsForAnticipation;
+
+      bool bonusAnticipation = (col == 1 && landedBonusSymbols >= 1) || (col == 2 && landedBonusSymbols >= 2);
+
+      anticipationActive = !immediate && (scatterAnticipation || bonusAnticipation);
+      if (anticipationActive) AudioManager.Instance?.StartAnticipationSpin();
 
       if (!immediate)
       {
         onColumnLand?.Invoke();
         yield return new WaitForSecondsRealtime(stagger);
+        SetGoldenEffect(col, false);
       }
       else if (!playedStopOnce)
       {
@@ -1060,7 +1056,7 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
       AudioManager.Instance?.PlayNormalWin();
     }
 
-    if (HasGoldenScatterWin)
+    if (HasGoldenScatterWin || (gameManager != null && gameManager.HasPendingTreasureHunt))
     {
       LowerAllWinCells();
       ReleaseWinOverlay();
@@ -1354,6 +1350,27 @@ private IEnumerator PlayWinPresentation(List<WinLine> winLines, System.Action on
         foreach (var cell in col.cells)
           if (cell != null && cell.SymbolId == scatterId)
             wins.Add((cell, scatterId));
+    }
+
+    if (wins.Count == 0) yield break;
+
+    HoldOverlayForFeature();
+    ShowWinCells(wins);
+    AudioManager.Instance?.StopWin();
+    AudioManager.Instance?.PlayScatterTrigger();
+    yield return PlayWinPass(wins, loopSpine: true);
+  }
+
+  internal IEnumerator PlayBonusTriggerAnimation()
+  {
+    var wins = new List<(SlotSymbolView cell, int symbolId)>();
+    int bonusId = GetBonusSymbolId();
+    if (resultCells != null)
+    {
+      foreach (var col in resultCells)
+        foreach (var cell in col.cells)
+          if (cell != null && cell.SymbolId == bonusId)
+            wins.Add((cell, bonusId));
     }
 
     if (wins.Count == 0) yield break;

@@ -1,0 +1,148 @@
+mid_pard.png
+size:1989,997
+filter:Linear,Linear
+pma:true
+Fx/Comp 1_00000
+bounds:1860,421,169,127
+offsets:125,116,480,270
+rotate:90
+Fx/Comp 1_00001
+bounds:1851,242,177,121
+offsets:121,121,480,270
+rotate:90
+Fx/Comp 1_00002
+bounds:1695,121,184,117
+offsets:118,125,480,270
+rotate:90
+Fx/Comp 1_00003
+bounds:1580,13,192,113
+offsets:114,129,480,270
+rotate:90
+Fx/Comp 1_00004
+bounds:1470,7,198,108
+offsets:111,133,480,270
+rotate:90
+Fx/Comp 1_00005
+bounds:469,7,207,102
+offsets:107,137,480,270
+rotate:90
+Fx/Comp 1_00006
+bounds:1886,592,214,101
+offsets:104,140,480,270
+rotate:90
+Fx/Comp 1_00007
+bounds:573,6,217,162
+offsets:105,82,480,270
+rotate:90
+Fx/Comp 1_00008
+bounds:1622,307,227,157
+offsets:99,89,480,270
+Fx/Comp 1_00009
+bounds:1622,466,236,152
+offsets:94,96,480,270
+Fx/Comp 1_00010
+bounds:1638,620,246,186
+offsets:88,63,480,270
+Fx/Comp 1_00011
+bounds:737,17,255,182
+offsets:83,69,480,270
+rotate:90
+Fx/Comp 1_00012
+bounds:202,2,265,176
+offsets:77,76,480,270
+Fx/Comp 1_00013
+bounds:1638,808,275,187
+offsets:72,66,480,270
+Fx/Comp 1_00014
+bounds:921,4,285,181
+offsets:66,73,480,270
+rotate:90
+Fx/Comp 1_00015
+bounds:1462,701,294,174
+offsets:61,80,480,270
+rotate:90
+Fx/Comp 1_00016
+bounds:1104,5,303,169
+offsets:56,86,480,270
+rotate:90
+Fx/Comp 1_00017
+bounds:1436,356,314,184
+offsets:50,71,480,270
+rotate:90
+Fx/Comp 1_00018
+bounds:1283,672,323,177
+offsets:45,78,480,270
+rotate:90
+Fx/Comp 1_00019
+bounds:1087,661,334,194
+offsets:39,61,480,270
+rotate:90
+Fx/Comp 1_00020
+bounds:897,652,343,188
+offsets:34,67,480,270
+rotate:90
+Fx/Comp 1_00021
+bounds:715,641,354,180
+offsets:28,74,480,270
+rotate:90
+Fx/Comp 1_00022
+bounds:538,632,363,175
+offsets:23,81,480,270
+rotate:90
+Fx/Comp 1_00023
+bounds:527,225,374,170
+offsets:17,87,480,270
+rotate:90
+Fx/Comp 1_00024
+bounds:359,216,383,166
+offsets:12,92,480,270
+rotate:90
+Fx/Comp 1_00025
+bounds:349,601,394,187
+offsets:6,72,480,270
+rotate:90
+Fx/Comp 1_00026
+bounds:175,180,404,182
+offsets:1,78,480,270
+rotate:90
+Fx/Comp 1_00027
+bounds:170,586,409,177
+offsets:0,83,480,270
+rotate:90
+Fx/Comp 1_00028
+bounds:2,160,414,171
+offsets:0,89,480,270
+rotate:90
+Fx/Comp 1_00029
+bounds:2,576,419,166
+offsets:0,94,480,270
+rotate:90
+Fx/Comp 1_00030
+bounds:1275,2,323,193
+offsets:101,67,480,270
+rotate:90
+Fx/Comp 1_00031
+bounds:1233,327,332,201
+offsets:97,59,480,270
+rotate:90
+Fx/Comp 1_00032
+bounds:1038,310,340,193
+offsets:94,66,480,270
+rotate:90
+Fx/Comp 1_00033
+bounds:851,291,348,185
+offsets:90,73,480,270
+rotate:90
+Fx/Comp 1_00034
+bounds:699,274,356,150
+offsets:87,80,480,270
+rotate:90
+Fx/Comp 1_00035
+bounds:2,5,198,153
+offsets:83,79,480,270
+Fx/Comp 1_00036
+bounds:1814,64,170,176
+offsets:115,57,480,270
+glow_yellow
+bounds:1470,207,147,147
+offsets:6,7,160,160

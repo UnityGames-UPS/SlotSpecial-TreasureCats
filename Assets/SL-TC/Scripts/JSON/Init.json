@@ -189,6 +189,46 @@
     "totalLines": 25
   },
   "features": {
+    "treasureHunt": {
+      "enabled": true,
+      "bonusSymbolId": 2,
+      "minTriggerCount": 3,
+      "requiredReels": [
+        1,
+        2,
+        3
+      ],
+      "disabledDuringFreeGames": true,
+      "mapTiles": [
+        "start",
+        "coin",
+        "coin",
+        "dice",
+        "coin",
+        "end"
+      ],
+      "coinPrizes": [
+        10,
+        20,
+        50
+      ],
+      "wheel": {
+        "coinPrizes": [
+          10,
+          20,
+          50,
+          100
+        ],
+        "diceThrows": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      }
+    },
     "mysteryReveal": {
       "enabled": true
     },
