@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using DG.Tweening;
@@ -570,7 +570,7 @@ public class UIManager : MonoBehaviour
             // lands — so the player sees "2 of 10" for the whole of spin 2 instead of the
             // number changing under them partway through it.
             if (gameManager.currentRound != null)
-                UpdateFreeSpinCount(gameManager.currentRound.spinsUsed);
+                UpdateFreeSpinCount(gameManager.currentRound.spinsUsed + 1);
         }
         else
         {
@@ -641,16 +641,6 @@ public class UIManager : MonoBehaviour
             // the player does not start these spins, so a greyed Stop is what is left.
             SetSpinStopButtonStates(isSpinningState: true, isInteractable: false);
 
-            if (gameManager.currentRound != null)
-            {
-                bool isRoundOver = (result != null && (result.isRoundOver || result.serverSpinsRemaining <= 0))
-                                   || gameManager.freeSpinsRemaining <= 0
-                                   || gameManager.currentRound.spinsUsed >= gameManager.currentRound.totalSpins;
-                if (isRoundOver)
-                {
-                    UpdateFreeSpinCount(gameManager.currentRound.totalSpins);
-                }
-            }
         }
         else
         {
