@@ -97,8 +97,22 @@ public class GameManager : MonoBehaviour
 
     uiManager.OnGameInitialized();
 
+    if (bonusManager == null)
+      bonusManager = BonusManager.Instance ?? Object.FindFirstObjectByType<BonusManager>(FindObjectsInactive.Include);
+
     if (bonusManager != null && gameConfig?.features?.treasureHunt != null)
       bonusManager.InitFromConfig(gameConfig.features.treasureHunt);
+
+    bool reconnectTreasureHunt = (gameConfig?.features != null && (gameConfig.features.treasureHuntActive || (gameConfig.features.treasureHunt != null && gameConfig.features.treasureHunt.triggered)))
+        || HasTreasureHunt(gameConfig?.features?.activeFeature);
+
+    if (reconnectTreasureHunt)
+    {
+      pendingTreasureHunt = true;
+      pendingHuntData = new TreasureHuntData { triggered = true, isReconnect = true };
+      uiManager.DisableControlsDuringWinAnimation();
+      StartCoroutine(ProcessSpecialFeaturesAfterWin());
+    }
   }
 
   #endregion
@@ -175,6 +189,7 @@ public class GameManager : MonoBehaviour
   internal void RequestSpin()
   {
     if (waitingForFreeSpinStart) return;
+    if (pendingTreasureHunt || (BonusManager.Instance != null && BonusManager.Instance.IsBonusRoundActive)) return;
 
     if (currentState != GameState.Idle) return;
     if (!socketManager.isConnected) return;
@@ -437,17 +452,22 @@ public class GameManager : MonoBehaviour
 
       if (bonusManager == null)
       {
-        bonusManager = Object.FindFirstObjectByType<BonusManager>();
+        bonusManager = BonusManager.Instance ?? Object.FindFirstObjectByType<BonusManager>(FindObjectsInactive.Include);
       }
 
       if (bonusManager != null)
       {
+        if (!bonusManager.gameObject.activeInHierarchy)
+          bonusManager.gameObject.SetActive(true);
+
         yield return StartCoroutine(bonusManager.PlayTreasureHuntRound(huntData));
       }
       else
       {
         Debug.LogError("BonusManager reference is not set");
       }
+
+      uiManager.EnableControlsAfterWinAnimation();
 
       if (!IsSpinning())
       {
@@ -660,6 +680,7 @@ public class GameManager : MonoBehaviour
 
   internal void StartAutoPlay(int rounds)
   {
+    if (pendingTreasureHunt || (BonusManager.Instance != null && BonusManager.Instance.IsBonusRoundActive)) return;
     if (currentState != GameState.Idle) return;
 
     // Check balance BEFORE locking any UI — if insufficient, show popup and bail.
@@ -904,14 +925,14 @@ public class GameManager : MonoBehaviour
     int bonusCount = CountBonusSymbols(lastResult.resultMatrix);
     Debug.Log($"Checking bonus symbols in resultMatrix- Count = {bonusCount}, Required = {minTriggerCount}");
 
-    bool hasServerData = lastResult.treasureHuntData != null || lastResult.triggeredFeatures != null;
+    bool isServerTriggered = lastResult.treasureHuntActive
+        || (lastResult.treasureHuntData != null && lastResult.treasureHuntData.triggered)
+        || HasTreasureHunt(lastResult.triggeredFeatures)
+        || HasTreasureHunt(lastResult.activeFeature);
 
-    bool isServerTriggered = (lastResult.triggeredFeatures != null && (lastResult.triggeredFeatures.Contains("treasureHunt") || lastResult.triggeredFeatures.Contains("bonus")))
-        || (lastResult.treasureHuntData != null && lastResult.treasureHuntData.triggered);
-
-    bool shouldTrigger = hasServerData
+    bool shouldTrigger = lastResult.treasureHuntData != null
         ? isServerTriggered
-        : (bonusCount >= minTriggerCount && HasRequiredReelsForBonus(lastResult.resultMatrix));
+        : (isServerTriggered || (bonusCount >= minTriggerCount && HasRequiredReelsForBonus(lastResult.resultMatrix)));
 
     if (shouldTrigger)
     {
@@ -966,6 +987,22 @@ public class GameManager : MonoBehaviour
     }
 
     return count;
+  }
+
+  private static bool HasTreasureHunt(List<string> list)
+  {
+    if (list == null) return false;
+    for (int i = 0; i < list.Count; i++)
+    {
+      string f = list[i];
+      if (f != null &&
+          (f.IndexOf("treasure", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+           f.IndexOf("bonus", System.StringComparison.OrdinalIgnoreCase) >= 0))
+      {
+        return true;
+      }
+    }
+    return false;
   }
 
 }

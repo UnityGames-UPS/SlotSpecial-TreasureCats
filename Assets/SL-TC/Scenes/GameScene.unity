@@ -39268,7 +39268,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f521a04de7f494272a617b2719edd271, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SocketIOManager
-  testToken: 75dbe7ad66ad48bca0c7fca5b601d12a
+  testToken: d1e917807e314b2191303615011d1277
   gameManager: {fileID: 1206269883}
   uiManager: {fileID: 885496184}
   popupManager: {fileID: 1363796882}
@@ -45811,7 +45811,7 @@ MonoBehaviour:
   - {fileID: 1960196379}
   allCells:
   - cells:
-    - {fileID: 0}
+    - {fileID: 1905189532466823402}
     - {fileID: 2612591446248127573}
     - {fileID: 2612591446657954140}
     - {fileID: 2612591446923964302}
@@ -66567,6 +66567,17 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 1905189532370512605, guid: 67fb1bfdf4f9a4dd78642735a67c3955, type: 3}
   m_PrefabInstance: {fileID: 986114612}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1905189532466823402 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2612591447317853433, guid: 67fb1bfdf4f9a4dd78642735a67c3955, type: 3}
+  m_PrefabInstance: {fileID: 986114612}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d71a0a99ce4be43939df2096630e8116, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SlotSymbolView
 --- !u!224 &1905189532513796501 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1905189532370512605, guid: 67fb1bfdf4f9a4dd78642735a67c3955, type: 3}
@@ -68301,18 +68312,6 @@ RectTransform:
   m_AnchoredPosition: {x: 542.1, y: 29.5}
   m_SizeDelta: {x: 111.1, y: 85.1}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &3924783856878933719
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5430451937363054688}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ImageAnimation
 --- !u!222 &3988067091414575837
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -68873,7 +68872,6 @@ GameObject:
   - component: {fileID: 6579276202061390824}
   - component: {fileID: 6594865498306436180}
   - component: {fileID: 8136659526798500546}
-  - component: {fileID: 3924783856878933719}
   m_Layer: 5
   m_Name: Dice2Jump
   m_TagString: Untagged
@@ -69032,18 +69030,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 0
---- !u!114 &6357091352266282654
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6414271840466327948}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ImageAnimation
 --- !u!1 &6414271840466327948
 GameObject:
   m_ObjectHideFlags: 0
@@ -69055,7 +69041,6 @@ GameObject:
   - component: {fileID: 3134141323051468243}
   - component: {fileID: 7275254846380384697}
   - component: {fileID: 8049143272959003839}
-  - component: {fileID: 6357091352266282654}
   m_Layer: 5
   m_Name: Dice1Jump
   m_TagString: Untagged

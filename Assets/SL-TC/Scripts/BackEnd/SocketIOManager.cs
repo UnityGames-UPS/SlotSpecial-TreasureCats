@@ -349,14 +349,17 @@ public class SocketIOManager : MonoBehaviour
 
     private void OnResultReceived(string jsonData)
     {
-        if (jsonData.IndexOf("\"bonusResult\"", StringComparison.OrdinalIgnoreCase) >= 0)
+        bool isBonusId = jsonData.IndexOf("\"bonusResult\"", StringComparison.OrdinalIgnoreCase) >= 0;
+        bool isResultData = jsonData.IndexOf("\"ResultData\"", StringComparison.OrdinalIgnoreCase) >= 0;
+
+        if (!isBonusId && !isResultData)
         {
-            OnBonusResultReceived(jsonData);
             return;
         }
 
-        if (jsonData.IndexOf("\"ResultData\"", StringComparison.OrdinalIgnoreCase) < 0)
+        if (isBonusId || (BonusManager.Instance != null && BonusManager.Instance.IsBonusRoundActive))
         {
+            OnBonusResultReceived(jsonData);
             return;
         }
 
@@ -403,10 +406,15 @@ public class SocketIOManager : MonoBehaviour
         {
             var bonusResult = JsonConvert.DeserializeObject<BonusResultData>(jsonData);
 
-            if (bonusResult == null || !bonusResult.success)
+            if (bonusResult == null || !bonusResult.success || bonusResult.payload == null)
             {
                 Debug.LogError("[SocketIO] Bonus result failed or was null");
                 return;
+            }
+
+            if (bonusResult.payload.treasureHunt != null)
+            {
+                bonusResult.payload = bonusResult.payload.treasureHunt;
             }
 
             // Update balance from server
@@ -646,6 +654,12 @@ public class SocketIOManager : MonoBehaviour
                 isFreeSpin = isFreeSpin
             }
         };
+
+        if (gameSocket == null || !isConnected)
+        {
+            Debug.LogError("[SocketIO] Cannot send spin request: socket is disconnected or null");
+            return;
+        }
 
         string json = JsonUtility.ToJson(request);
         gameSocket.Emit("request", json);

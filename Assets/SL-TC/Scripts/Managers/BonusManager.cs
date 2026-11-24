@@ -233,6 +233,7 @@ public class BonusManager : MonoBehaviour
 
     private void OnDisable()
     {
+        IsBonusRoundActive = false;
         _winCountTween?.Kill();
         HideTileWinText();
         OrientationChange.OnOrientationChanged -= HandleOrientationChange;
@@ -285,11 +286,14 @@ public class BonusManager : MonoBehaviour
     internal IEnumerator PlayTreasureHuntRound(TreasureHuntData data)
     {
         IsBonusRoundActive = true;
-        if (slotManager == null) slotManager = Object.FindFirstObjectByType<SlotView>();
-        if (slotManager != null)
-            yield return slotManager.PlayBonusTriggerAnimation();
-        else
-            yield return new WaitForSeconds(2.5f);
+        if (data?.isReconnect != true)
+        {
+            if (slotManager == null) slotManager = Object.FindFirstObjectByType<SlotView>();
+            if (slotManager != null)
+                yield return slotManager.PlayBonusTriggerAnimation();
+            else
+                yield return new WaitForSeconds(2.5f);
+        }
 
         var oc = GetOrientationChange();
         bool isPortrait = oc != null && oc.CurrentMode == OrientationChange.OrientationMode.MobilePortrait;
@@ -329,17 +333,17 @@ public class BonusManager : MonoBehaviour
 
         EnsureBoardAndMarkerConfigured();
 
-        _bonusTotalWin = 0;
-        _currentPosition = (data != null && data.markerPosition >= 0 && data.markerPosition < boardPositions.Count) 
-            ? data.markerPosition 
+        _bonusTotalWin = data?.totalBonusWin ?? 0;
+        _currentPosition = (data != null && boardPositions != null && data.markerPosition >= 0 && data.markerPosition < boardPositions.Count)
+            ? data.markerPosition
             : 0;
         PlaceCharacterAtIndex(_currentPosition);
         HideTileSpineEffects();
         HideTileWinText();
 
-        _rollsRemaining = tempRollChances > 0 ? tempRollChances : 3;
+        _rollsRemaining = data?.chancesRemaining > 0 ? data.chancesRemaining : (tempRollChances > 0 ? tempRollChances : 3);
         UpdateRollsDisplay(_rollsRemaining);
-        SetBonusText(TotalWinTextLandscape, TotalWinTextPortrait, FormatAmount(0));
+        SetBonusText(TotalWinTextLandscape, TotalWinTextPortrait, FormatAmount(_bonusTotalWin));
 
         if (gameManager == null) gameManager = Object.FindFirstObjectByType<GameManager>();
         if (uiManager == null) uiManager = Object.FindFirstObjectByType<UIManager>();
@@ -353,8 +357,9 @@ public class BonusManager : MonoBehaviour
             SetRollButtonsInteractable(false);
             HideTileSpineEffects();
 
-            if (gameManager != null)
+            if (gameManager != null && gameManager.socketManager != null)
             {
+                gameManager.ConsumePendingBonusResult();
                 gameManager.socketManager.SendBonusRequest(gameManager.currentBetIndex);
             }
             else
@@ -382,8 +387,12 @@ public class BonusManager : MonoBehaviour
             double serverCoinWin = payload?.coinWin ?? 0;
             roundOver = payload?.isOver ?? false;
 
-            bool isWheel = string.Equals(payload?.tileType, "WHEEL", System.StringComparison.OrdinalIgnoreCase);
-            _rollsRemaining = isWheel ? Mathf.Max(0, _rollsRemaining - 1) : (payload?.chancesRemaining ?? Mathf.Max(0, _rollsRemaining - 1));
+            bool isWheel = IsWheelTile(payload, isIntermediate: true, payload != null && payload.currentPosition >= 0 ? payload.currentPosition : _currentPosition);
+            bool isSpeedBoost = payload != null && (payload.boostSteps > 0 ||
+                                                    string.Equals(payload.tileType, "SPEED_BOOST", System.StringComparison.OrdinalIgnoreCase) ||
+                                                    payload.currentPosition != payload.finalPosition);
+            bool willSpinWheel = isWheel || (isSpeedBoost && IsWheelTile(payload, isIntermediate: false, serverFinalPosition));
+            _rollsRemaining = willSpinWheel ? Mathf.Max(0, _rollsRemaining - 1) : (payload?.chancesRemaining ?? Mathf.Max(0, _rollsRemaining - 1));
             UpdateRollsDisplay(_rollsRemaining);
 
             Debug.Log($"[BonusManager] Roll result: dice={diceValue}, finalPos={serverFinalPosition}, " +
@@ -393,14 +402,14 @@ public class BonusManager : MonoBehaviour
 
             if (payload != null && boardPositions != null && payload.previousPosition >= 0 && payload.previousPosition < boardPositions.Count)
             {
-                _currentPosition = payload.previousPosition;
+                if (_currentPosition != payload.previousPosition)
+                {
+                    _currentPosition = payload.previousPosition;
+                    PlaceCharacterAtIndex(_currentPosition);
+                }
             }
 
             int boardCount = boardPositions != null && boardPositions.Count > 0 ? boardPositions.Count : 28;
-
-            bool isSpeedBoost = payload != null && (payload.boostSteps > 0 ||
-                                                    string.Equals(payload.tileType, "SPEED_BOOST", System.StringComparison.OrdinalIgnoreCase) ||
-                                                    payload.currentPosition != payload.finalPosition);
 
             if (isWheel || isSpeedBoost)
             {
@@ -449,13 +458,25 @@ public class BonusManager : MonoBehaviour
                 TriggerTileSpineForCurrentTile(payload, isIntermediate: false);
             }
 
-            bool wheelCoinApplied = isWheel;
+            bool isBoostedWheel = isSpeedBoost && IsWheelTile(payload, isIntermediate: false, serverFinalPosition);
+            if (isBoostedWheel)
+            {
+                yield return new WaitForSeconds(0.35f);
+                yield return PlayWheelSpinRoutine(payload);
+            }
+
+            bool wheelCoinApplied = isWheel || isBoostedWheel;
             if (!wheelCoinApplied && serverCoinWin > 0)
             {
                 ShowTileWin(serverCoinWin);
                 double prevWin = _bonusTotalWin;
-                _bonusTotalWin += serverCoinWin;
+                _bonusTotalWin = payload?.totalBonusWin > _bonusTotalWin ? payload.totalBonusWin : _bonusTotalWin + serverCoinWin;
                 yield return AnimateTotalWin(prevWin, _bonusTotalWin);
+            }
+            else if (payload?.totalBonusWin > _bonusTotalWin)
+            {
+                _bonusTotalWin = payload.totalBonusWin;
+                SetBonusText(TotalWinTextLandscape, TotalWinTextPortrait, FormatAmount(_bonusTotalWin));
             }
 
             yield return new WaitForSeconds(0.4f);
@@ -842,12 +863,9 @@ public class BonusManager : MonoBehaviour
             _activeTileSpine.gameObject.SetActive(false);
             _activeTileSpine = null;
         }
-        else
-        {
-            if (coinSpine != null && coinSpine.gameObject.activeSelf) coinSpine.gameObject.SetActive(false);
-            if (redLabelSpine != null && redLabelSpine.gameObject.activeSelf) redLabelSpine.gameObject.SetActive(false);
-            if (arrowSpine != null && arrowSpine.gameObject.activeSelf) arrowSpine.gameObject.SetActive(false);
-        }
+        if (coinSpine != null && coinSpine.gameObject.activeSelf) coinSpine.gameObject.SetActive(false);
+        if (redLabelSpine != null && redLabelSpine.gameObject.activeSelf) redLabelSpine.gameObject.SetActive(false);
+        if (arrowSpine != null && arrowSpine.gameObject.activeSelf) arrowSpine.gameObject.SetActive(false);
     }
 
     private List<RectTransform> GetCoinPool()
@@ -919,7 +937,7 @@ public class BonusManager : MonoBehaviour
     {
         string tType = isIntermediate
             ? payload?.tileType
-            : (!string.IsNullOrEmpty(payload?.boostedTileType) ? payload.boostedTileType : payload?.tileType);
+            : (!string.IsNullOrEmpty(payload?.boostedTileType) ? payload.boostedTileType : null);
 
         if (string.IsNullOrEmpty(tType) && _configData?.mapTiles != null && _configData.mapTiles.Count > 0 && _currentPosition >= 0)
         {
@@ -952,6 +970,27 @@ public class BonusManager : MonoBehaviour
         }
     }
 
+    internal bool IsWheelTile(BonusResultPayload payload, bool isIntermediate, int position)
+    {
+        if (payload != null && !isIntermediate && !string.IsNullOrEmpty(payload.wheelPrize))
+        {
+            return true;
+        }
+
+        string tType = isIntermediate
+            ? payload?.tileType
+            : (!string.IsNullOrEmpty(payload?.boostedTileType) ? payload.boostedTileType : payload?.tileType);
+
+        if (string.IsNullOrEmpty(tType) && _configData?.mapTiles != null && _configData.mapTiles.Count > 0 && position >= 0)
+        {
+            tType = _configData.mapTiles[position % _configData.mapTiles.Count];
+        }
+
+        return !string.IsNullOrEmpty(tType) &&
+               (tType.IndexOf("WHEEL", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                tType.IndexOf("RED", System.StringComparison.OrdinalIgnoreCase) >= 0);
+    }
+
     private IEnumerator PlayWheelSpinRoutine(BonusResultPayload payload)
     {
         var oc = GetOrientationChange();
@@ -962,6 +1001,11 @@ public class BonusManager : MonoBehaviour
         Button spinBtn = isPortrait ? wheelSpinBtnPortrait : wheelSpinBtnLandscape;
 
         if (inactiveWheel != null) inactiveWheel.SetActive(false);
+        if (activeWheelTransform == null && activeWheel != null)
+        {
+            activeWheelTransform = activeWheel.transform.Find("wheelbg") as RectTransform
+                ?? activeWheel.GetComponentInChildren<RectTransform>();
+        }
         if (activeWheel == null || activeWheelTransform == null) yield break;
 
         activeWheelTransform.DOKill();
@@ -988,12 +1032,21 @@ public class BonusManager : MonoBehaviour
             spinBtn.interactable = false;
         }
 
-        bool isExtraChance = (payload?.diceThrows > 0) ||
+        bool isCoinPrize = (!string.IsNullOrEmpty(payload?.wheelPrize) &&
+                            payload.wheelPrize.IndexOf("COIN", System.StringComparison.OrdinalIgnoreCase) >= 0) ||
+                           (payload?.coinWin > 0 &&
+                            (string.IsNullOrEmpty(payload?.wheelPrize) ||
+                             (payload.wheelPrize.IndexOf("DICE", System.StringComparison.OrdinalIgnoreCase) < 0 &&
+                              payload.wheelPrize.IndexOf("CHANCE", System.StringComparison.OrdinalIgnoreCase) < 0)));
+
+        bool isExtraChance = !isCoinPrize && (
+            (payload?.diceThrows > 0) ||
             (!string.IsNullOrEmpty(payload?.wheelPrize) &&
              (payload.wheelPrize.IndexOf("CHANCE", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
               payload.wheelPrize.IndexOf("DICE", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-              payload.wheelPrize.IndexOf("BOOST", System.StringComparison.OrdinalIgnoreCase) >= 0)) ||
-            (payload?.boostSteps > 0);
+              int.TryParse(payload.wheelPrize, out _))) ||
+            (payload?.chancesRemaining > _rollsRemaining)
+        );
         float[] angles = isExtraChance ? new float[] { 0f, 120f, 240f } : new float[] { 60f, 180f, 300f };
         float targetAngle = angles[Random.Range(0, angles.Length)];
 
@@ -1010,12 +1063,15 @@ public class BonusManager : MonoBehaviour
 
         if (isExtraChance)
         {
-            _rollsRemaining = payload?.chancesRemaining ?? (_rollsRemaining + (payload?.diceThrows > 0 ? payload.diceThrows : 1));
+            int diceAward = (payload?.diceThrows > 0)
+                ? payload.diceThrows
+                : (int.TryParse(payload?.wheelPrize, out int dt) && dt > 0 ? dt : 1);
+            _rollsRemaining = payload?.chancesRemaining > 0 ? payload.chancesRemaining : (_rollsRemaining + diceAward);
             UpdateRollsDisplay(_rollsRemaining);
             AudioManager.Instance?.PlayFreeSpinRewarded();
             if (RemainingRollsTextLandscape) RemainingRollsTextLandscape.transform.DOPunchScale(Vector3.one * 0.4f, 0.4f, 5, 0.5f);
             if (RemainingRollsTextPortrait) RemainingRollsTextPortrait.transform.DOPunchScale(Vector3.one * 0.4f, 0.4f, 5, 0.5f);
-            if (payload?.boostSteps > 0 || string.Equals(payload?.wheelPrize, "SPEED_BOOST", System.StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(payload?.wheelPrize, "SPEED_BOOST", System.StringComparison.OrdinalIgnoreCase))
             {
                 TriggerSpeedBoostVisualFeedback();
             }
@@ -1023,11 +1079,21 @@ public class BonusManager : MonoBehaviour
         }
         else if (payload?.coinWin > 0)
         {
+            if (payload.chancesRemaining > 0 || payload.isOver)
+            {
+                _rollsRemaining = payload.chancesRemaining;
+                UpdateRollsDisplay(_rollsRemaining);
+            }
             ShowTileWin(payload.coinWin);
             PlayCoinReachedEffects();
             double prevWin = _bonusTotalWin;
-            _bonusTotalWin += payload.coinWin;
+            _bonusTotalWin = payload.totalBonusWin > _bonusTotalWin ? payload.totalBonusWin : _bonusTotalWin + payload.coinWin;
             yield return AnimateTotalWin(prevWin, _bonusTotalWin);
+        }
+        else if (payload?.chancesRemaining >= 0)
+        {
+            _rollsRemaining = payload.chancesRemaining;
+            UpdateRollsDisplay(_rollsRemaining);
         }
     }
 

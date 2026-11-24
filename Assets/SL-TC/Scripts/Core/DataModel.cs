@@ -67,6 +67,7 @@ public class TreasureHunt
 {
     public Wheel wheel { get; set; }
     public bool enabled { get; set; }
+    public bool triggered { get; set; }
     public List<string> mapTiles { get; set; }
     public List<int> coinPrizes { get; set; }
     public int initialChances { get; set; }

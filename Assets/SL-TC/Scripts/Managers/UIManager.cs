@@ -626,6 +626,10 @@ public class UIManager : MonoBehaviour
     internal void OnSpinCompleted(SpinResult result = null)
     {
         if (result != null) UpdateWinDisplay(DisplayWinFor(result));
+        if (result != null && gameManager != null && gameManager.isInFreeSpins && result.serverSpinsRemaining >= 0)
+        {
+            UpdateFreeSpinCountFromRemaining(result.serverSpinsRemaining);
+        }
         UpdateBalanceDisplay();
 
         if (gameManager.isAutoPlaying)
@@ -1186,6 +1190,7 @@ public class UIManager : MonoBehaviour
     internal void OnFreeSpinsEnded(double totalRoundWin, int totalSpinsUsed)
     {
         totalFreeSpinsAwarded = 0;
+        SpriteNumberFormatter.Apply(totalFSText, 0, maxDecimals: 0, grouping: false);
         SpriteNumberFormatter.Apply(currentFSText, 0, maxDecimals: 0, grouping: false);
 
         HideFreeSpinDisplay();
@@ -1236,6 +1241,18 @@ public class UIManager : MonoBehaviour
 
         int remaining = Mathf.Clamp(totalFreeSpinsAwarded - playedSpins, 0, Mathf.Max(0, totalFreeSpinsAwarded));
 
+        SpriteNumberFormatter.Apply(currentFSText, remaining, maxDecimals: 0, grouping: false);
+    }
+
+    internal void UpdateFreeSpinCountFromRemaining(int remainingSpins)
+    {
+        if (remainingSpins > totalFreeSpinsAwarded)
+        {
+            totalFreeSpinsAwarded = remainingSpins;
+            SpriteNumberFormatter.Apply(totalFSText, totalFreeSpinsAwarded, maxDecimals: 0, grouping: false);
+        }
+
+        int remaining = Mathf.Clamp(remainingSpins, 0, Mathf.Max(0, totalFreeSpinsAwarded));
         SpriteNumberFormatter.Apply(currentFSText, remaining, maxDecimals: 0, grouping: false);
     }
 
@@ -1562,8 +1579,9 @@ public class UIManager : MonoBehaviour
                 ? symbol.matchCounts[i]
                 : 5 - i;
 
-            double payout = symbol.multipliers[i] * totalBet;
-            result += $"{matchCount}    {FormatAmount(payout)}\n";
+            // double payout = symbol.multipliers[i] * totalBet;
+            // double payout = symbol.multipliers[i] * totalBet;
+            result += $"{matchCount}    {symbol.multipliers[i]}\n";
         }
         text.text = result.TrimEnd();
     }

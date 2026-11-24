@@ -85,6 +85,7 @@ public class ServerFeatures
   /// </summary>
   [JsonConverter(typeof(StringOrArrayConverter))]
   public List<string> activeFeature;
+  public bool treasureHuntActive;
 
   public int freeSpinsRemaining;
   public ServerMeters meters;
@@ -209,6 +210,7 @@ public class BonusPosition
 public class TreasureHuntData
 {
   public bool triggered;
+  [NonSerialized] public bool isReconnect;
   public int bonusCount;
   public int markerPosition;
   public int diceRoll;
@@ -280,6 +282,7 @@ public class BonusResultPayload
   public int boostedTileIndex;
   public string boostedTileType;
   public List<int> usedTileIndexes;
+  [NonSerialized, JsonProperty("treasureHunt")] public BonusResultPayload treasureHunt;
 }
 
 [Serializable]
@@ -321,6 +324,9 @@ public class ServerPayload
   public ServerMeters meters;
   public ServerScatter scatter;
   public TreasureHuntData treasureHunt;
+  public bool treasureHuntActive;
+  public bool bonusTriggered;
+  public bool isBonusTriggered;
 }
 
 [Serializable]
@@ -559,6 +565,7 @@ public class SpinResult
   public ScatterData scatterData;
   public OverlayScatterData overlayScatterData; // Keep for safety/UI compilation
   public TreasureHuntData treasureHuntData;
+  public bool treasureHuntActive;
   public Dictionary<string, int> stickyWilds;  // Keep for safety/UI compilation
 
   // Server-authoritative free spin state
@@ -988,7 +995,9 @@ public static class InitDataConverter
       // against its cached snapshot to decide which meter each coin moved.
       meters = payload?.meters,
       jackpotWins = payload?.jackpotWin,
-      treasureHuntData = payload?.treasureHunt,
+      treasureHuntData = payload?.treasureHunt ?? serverResponse.treasureHunt,
+      treasureHuntActive = (payload != null && (payload.treasureHuntActive || payload.bonusTriggered || payload.isBonusTriggered))
+          || (serverResponse.treasureHunt != null && serverResponse.treasureHunt.triggered),
       triggeredFeatures = payload?.triggeredFeatures,
       activeFeature = payload?.activeFeature,
       yellowFSCollections = payload?.yellowFSCollections,
