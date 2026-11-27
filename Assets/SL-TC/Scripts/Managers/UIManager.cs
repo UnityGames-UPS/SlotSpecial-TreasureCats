@@ -564,7 +564,7 @@ public class UIManager : MonoBehaviour
             // Stop is live during free spins exactly as it is in the base game — the player is
             // watching the same reels. Only the BET controls stay locked, because the stake is
             // fixed for the round.
-            SetSpinStopButtonStates(isSpinningState: true, isInteractable: true);
+            SetSpinStopButtonStates(isSpinningState: false, isInteractable: false);
 
             // The counter ticks HERE, as this spin's reels start, rather than when its result
             // lands — so the player sees "2 of 10" for the whole of spin 2 instead of the
@@ -593,7 +593,7 @@ public class UIManager : MonoBehaviour
         }
         else if (gameManager.isInFreeSpins)
         {
-            SetSpinStopButtonStates(isSpinningState: true, isInteractable: false);
+            SetSpinStopButtonStates(isSpinningState: false, isInteractable: false);
         }
         else
         {
@@ -643,7 +643,7 @@ public class UIManager : MonoBehaviour
             // pressable and does nothing, since RequestStop ignores anything but Spinning.
             // The base game shows the spin button at this point; free spins cannot, because
             // the player does not start these spins, so a greyed Stop is what is left.
-            SetSpinStopButtonStates(isSpinningState: true, isInteractable: false);
+            SetSpinStopButtonStates(isSpinningState: false, isInteractable: false);
 
         }
         else
@@ -701,7 +701,7 @@ public class UIManager : MonoBehaviour
         else if (gameManager.isInFreeSpins)
         {
             // Presentation over, reels already down — same reasoning as OnSpinCompleted.
-            SetSpinStopButtonStates(isSpinningState: true, isInteractable: false);
+            SetSpinStopButtonStates(isSpinningState: false, isInteractable: false);
         }
         else
         {
@@ -760,6 +760,10 @@ public class UIManager : MonoBehaviour
             SetButtonActive(autoSpinStopButton, autoSpinStopButtonPortrait, true);
             SetButtonInteractable(autoSpinStopButton, autoSpinStopButtonPortrait, false);
         }
+        else if (gameManager.isInFreeSpins)
+        {
+            SetSpinStopButtonStates(isSpinningState: false, isInteractable: false);
+        }
         else
         {
             SetButtonActive(autoSpinStopButton, autoSpinStopButtonPortrait, false);
@@ -777,6 +781,13 @@ public class UIManager : MonoBehaviour
             SetButtonActive(stopButton, stopButtonPortrait, false);
             SetButtonActive(autoSpinStopButton, autoSpinStopButtonPortrait, true);
             SetButtonInteractable(autoSpinStopButton, autoSpinStopButtonPortrait, isInteractable);
+        }
+        else if (gameManager.isInFreeSpins)
+        {
+            SetButtonActive(autoSpinStopButton, autoSpinStopButtonPortrait, false);
+            SetButtonActive(stopButton, stopButtonPortrait, false);
+            SetButtonActive(spinButton, spinButtonPortrait, true);
+            SetButtonInteractable(spinButton, spinButtonPortrait, false);
         }
         else
         {
@@ -1175,6 +1186,7 @@ public class UIManager : MonoBehaviour
     internal void OnFreeSpinsStarted(int spins)
     {
         totalFreeSpinsAwarded = spins;
+        SetSpinStopButtonStates(isSpinningState: false, isInteractable: false);
 
         // The win field is deliberately NOT cleared. The base spin that triggered the round
         // has already won something — its line wins plus the 1x total stake the trigger itself
@@ -1761,7 +1773,7 @@ public class UIManager : MonoBehaviour
             if (!gameManager.IsSpinning())
             {
                 SetButtonActive(spinButton, spinButtonPortrait, true);
-                SetButtonInteractable(spinButton, spinButtonPortrait, true);
+                SetButtonInteractable(spinButton, spinButtonPortrait, !gameManager.isInFreeSpins);
             }
 
             TryCreditWin();
@@ -1826,7 +1838,7 @@ public class UIManager : MonoBehaviour
         if (!gameManager.IsSpinning())
         {
             SetButtonActive(spinButton, spinButtonPortrait, true);
-            SetButtonInteractable(spinButton, spinButtonPortrait, true);
+            SetButtonInteractable(spinButton, spinButtonPortrait, !gameManager.isInFreeSpins);
         }
 
         if (spine != null && spine.IsValid)
@@ -1861,7 +1873,7 @@ public class UIManager : MonoBehaviour
         if (!gameManager.IsSpinning())
         {
             SetButtonActive(spinButton, spinButtonPortrait, true);
-            SetButtonInteractable(spinButton, spinButtonPortrait, true);
+            SetButtonInteractable(spinButton, spinButtonPortrait, !gameManager.isInFreeSpins);
         }
     }
 

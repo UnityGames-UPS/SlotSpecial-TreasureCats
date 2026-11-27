@@ -210,6 +210,7 @@ public class GameManager : MonoBehaviour
   internal void RequestStop()
   {
     if (currentState != GameState.Spinning) return;
+    if (isInFreeSpins) return;
 
     if (isAutoPlaying)
     {
